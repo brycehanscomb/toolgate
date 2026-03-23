@@ -10,6 +10,10 @@
     "./testing": "./src/testing.ts"
   },
   "devDependencies": {
+    "@types/shell-quote": "^1.7.5",
     "bun-types": "latest"
+  },
+  "dependencies": {
+    "shell-quote": "^1.8.3"
   }
 }
