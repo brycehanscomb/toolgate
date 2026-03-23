@@ -20,12 +20,14 @@ switch (command) {
     break
 
   case 'test':
-    const [toolName, argsJson] = args
+    const why = args.includes('--why')
+    const testArgs = args.filter(a => a !== '--why')
+    const [toolName, argsJson] = testArgs
     if (!toolName) {
-      console.error('Usage: toolgate test <tool> [args-json]')
+      console.error('Usage: toolgate test [--why] <tool> [args-json]')
       process.exit(1)
     }
-    await testTool(toolName, argsJson ? JSON.parse(argsJson) : {})
+    await testTool(toolName, argsJson ? JSON.parse(argsJson) : {}, why)
     break
 
   default:

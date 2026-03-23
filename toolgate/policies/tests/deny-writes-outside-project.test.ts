@@ -18,6 +18,14 @@ function edit(filePath: string, projectRoot: string | null = "/home/user/project
   };
 }
 
+function bash(command: string, projectRoot: string | null = "/home/user/project"): ToolCall {
+  return {
+    tool: "Bash",
+    args: { command },
+    context: { cwd: "/home/user/project", env: {}, projectRoot },
+  };
+}
+
 describe("deny-writes-outside-project", () => {
   describe("allows writes within project root", () => {
     it("allows Write to file in project", async () => {
@@ -78,15 +86,60 @@ describe("deny-writes-outside-project", () => {
       const result = await denyWritesOutsideProject(call);
       expect(result.verdict).toBe(NEXT);
     });
+  });
 
-    it("passes through Bash", async () => {
-      const call: ToolCall = {
-        tool: "Bash",
-        args: { command: "echo hi" },
-        context: { cwd: "/tmp", env: {}, projectRoot: "/home/user/project" },
-      };
-      const result = await denyWritesOutsideProject(call);
+  describe("denies Bash redirects outside project", () => {
+    it("denies cat > /outside/path", async () => {
+      const result = await denyWritesOutsideProject(bash("cat > /etc/passwd"));
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies cat >> /outside/path (append)", async () => {
+      const result = await denyWritesOutsideProject(bash("cat >> /home/user/.bashrc"));
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies heredoc redirect outside project", async () => {
+      const result = await denyWritesOutsideProject(
+        bash("cat > /home/user/.claude/plans/evil.md << 'EOF'\nsome content\nEOF"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies mkdir -p && cat > /outside/path", async () => {
+      const result = await denyWritesOutsideProject(
+        bash("mkdir -p /tmp/foo && cat > /tmp/foo/bar.md"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies tee writing outside project", async () => {
+      const result = await denyWritesOutsideProject(bash("echo hi | tee /etc/evil"));
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("allows redirect inside project", async () => {
+      const result = await denyWritesOutsideProject(
+        bash("echo hello > /home/user/project/output.txt"),
+      );
       expect(result.verdict).toBe(NEXT);
+    });
+
+    it("allows Bash with no redirects", async () => {
+      const result = await denyWritesOutsideProject(bash("echo hello"));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("allows Bash with no projectRoot", async () => {
+      const result = await denyWritesOutsideProject(bash("cat > /etc/passwd", null));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("denies redirect to sibling project directory", async () => {
+      const result = await denyWritesOutsideProject(
+        bash("echo x > /home/user/project-evil/foo.ts"),
+      );
+      expect(result.verdict).toBe(DENY);
     });
   });
 });

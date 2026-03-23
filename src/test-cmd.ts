@@ -1,10 +1,10 @@
 import { loadConfigs } from './config'
-import { runPolicy } from './policy'
+import { runPolicyWithTrace } from './policy'
 import { ALLOW, DENY, NEXT } from './verdicts'
 import { findGitRoot } from './utils'
 import type { ToolCall } from './types'
 
-export async function testTool(tool: string, args: Record<string, any>): Promise<void> {
+export async function testTool(tool: string, args: Record<string, any>, why = false): Promise<void> {
   const cwd = process.cwd()
   const call: ToolCall = {
     tool,
@@ -23,7 +23,7 @@ export async function testTool(tool: string, args: Record<string, any>): Promise
     process.exit(1)
   }
 
-  const result = await runPolicy(middlewares, call)
+  const { result, index, name } = await runPolicyWithTrace(middlewares, call)
 
   const symbol = result.verdict
   if (symbol === ALLOW) {
@@ -33,5 +33,14 @@ export async function testTool(tool: string, args: Record<string, any>): Promise
     console.log(`→ DENY${reason ? `: ${reason}` : ''}`)
   } else if (symbol === NEXT) {
     console.log('→ ASK (no policy matched, Claude Code will prompt)')
+  }
+
+  if (why) {
+    if (index === -1) {
+      console.log(`  why: all ${middlewares.length} policies returned next()`)
+    } else {
+      const label = name || `middleware[${index}]`
+      console.log(`  why: ${label} (index ${index})`)
+    }
   }
 }

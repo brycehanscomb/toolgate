@@ -5,9 +5,23 @@ export function definePolicy(middlewares: Middleware[]): Middleware[] {
   return middlewares
 }
 
+export interface TracedResult {
+  result: VerdictResult
+  /** Index of the middleware that returned the verdict, or -1 if all returned next() */
+  index: number
+  /** Name of the middleware function, if available */
+  name: string | null
+}
+
 export async function runPolicy(middlewares: Middleware[], call: ToolCall): Promise<VerdictResult> {
+  const { result } = await runPolicyWithTrace(middlewares, call)
+  return result
+}
+
+export async function runPolicyWithTrace(middlewares: Middleware[], call: ToolCall): Promise<TracedResult> {
   for (let i = 0; i < middlewares.length; i++) {
-    const result = await middlewares[i](call)
+    const mw = middlewares[i]
+    const result = await mw(call)
 
     if (!isVerdictResult(result)) {
       throw new Error(
@@ -17,9 +31,9 @@ export async function runPolicy(middlewares: Middleware[], call: ToolCall): Prom
     }
 
     if (result.verdict !== NEXT) {
-      return result
+      return { result, index: i, name: mw.name || null }
     }
   }
 
-  return next()
+  return { result: next(), index: -1, name: null }
 }

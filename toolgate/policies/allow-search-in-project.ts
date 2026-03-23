@@ -2,11 +2,11 @@ import { resolve } from "node:path";
 import { allow, next, type ToolCall } from "../../src";
 
 /**
- * Allow Grep tool calls when the search path is within the project root.
+ * Allow Search tool calls when the search path is within the project root.
  * Also allows when no path is specified (defaults to cwd, which is in-project).
  */
-export default async function allowGrepInProject(call: ToolCall) {
-  if (call.tool !== "Grep") {
+export default async function allowSearchInProject(call: ToolCall) {
+  if (call.tool !== "Search" && call.tool !== "Glob") {
     return next();
   }
 
@@ -16,7 +16,7 @@ export default async function allowGrepInProject(call: ToolCall) {
 
   const searchPath = call.args.path;
 
-  // No path specified — Grep defaults to cwd
+  // No path specified — Search defaults to cwd
   if (searchPath === undefined) {
     if (call.context.cwd.startsWith(call.context.projectRoot)) {
       return allow();
