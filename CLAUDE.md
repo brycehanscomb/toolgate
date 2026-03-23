@@ -1,106 +1,64 @@
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+## Project Overview
 
-## APIs
+Toolgate is a policy engine for Claude Code's PreToolUse hooks. It intercepts tool calls and makes permission decisions (allow/deny/ask) based on configurable middleware policies.
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Commands
 
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+```bash
+bun test                              # run all tests
+bun test src/                         # run core tests only
+bun test toolgate/policies/tests/     # run policy tests only
+bun test <path/to/file.test.ts>       # run a single test file
+bun install                           # install dependencies
 ```
 
-## Frontend
+Use Bun exclusively — not Node.js, npm, yarn, or pnpm. Bun auto-loads `.env`.
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+## Architecture
 
-Server:
+**Data flow:** Claude Code hook (stdin JSON) → `cli.ts run` → `buildToolCall()` → `loadConfigs()` → `runPolicy()` middleware chain → hook response (stdout JSON)
 
-```ts#index.ts
-import index from "./index.html"
+### Core (`src/`)
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
+- **`types.ts`** — `ToolCall`, `CallContext`, `VerdictResult`, `Middleware` type definitions
+- **`verdicts.ts`** — Symbol-based verdict system: `ALLOW`, `DENY`, `NEXT` with helpers `allow()`, `deny(reason?)`, `next()`
+- **`policy.ts`** — `definePolicy()` and `runPolicy()` — sequential middleware chain, returns first non-NEXT verdict
+- **`config.ts`** — Loads project config (`./toolgate.config.ts` or `./.claude/toolgate.config.ts`) then global (`~/.claude/toolgate.config.ts`), concatenates middleware arrays
+- **`runner.ts`** — Bridges Claude Code hook stdin/stdout protocol to the policy engine
+- **`cli.ts`** — Subcommands: `run` (hook handler), `init` (setup), `test` (dry-run)
+- **`testing.ts`** — `testPolicy()` assertion helper for policy test cases
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Policies (`toolgate/policies/`)
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
+Each policy is a single `Middleware` function exported as default. Policies return `next()` to pass through, `allow()` to permit, or `deny(reason)` to block.
 
-With the following `frontend.tsx`:
+Config file (`toolgate.config.ts`) wires policies into the chain via `definePolicy([...])`. Order matters — first non-NEXT verdict wins.
 
-```tsx#frontend.tsx
-import React from "react";
+### Key Patterns
 
-// import .css files directly and it works
-import './index.css';
+- **Whitelist approach**: Policies explicitly allow known-safe patterns; everything else falls through as `next()` (prompts user)
+- **Shell command safety**: Use `shell-quote` to parse Bash commands into tokens. Reject if any token is non-string (operators), contains shell metacharacters, or command has newlines
+- **Self-imports in tests**: Policy tests import from `"toolgate"` (package self-reference) instead of relative `../../../src` paths
+- **Middleware is async**: All middleware returns `Promise<VerdictResult>`
 
-import { createRoot } from "react-dom/client";
+## Writing a Policy
 
-const root = createRoot(document.body);
+```ts
+import { allow, next, type ToolCall } from "../../src";
 
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
+export default async function myPolicy(call: ToolCall) {
+  if (call.tool !== "Bash") return next();
+  // ... validation logic ...
+  return allow();
 }
-
-root.render(<Frontend />);
 ```
 
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+For Bash policies that parse commands, always guard against:
+1. Command chaining (`&&`, `||`, `;`, `|`, `&`)
+2. Shell substitution (`$()`, backticks)
+3. Multiline commands (newlines as command separators)
+4. Metacharacters in string tokens that `shell-quote` misses
