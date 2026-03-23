@@ -4,6 +4,7 @@ const ALLOWED_COMMANDS = new Set([
   "git status",
   "git diff",
   "git log --oneline -5",
+  "git diff --stat",
 ]);
 
 /**

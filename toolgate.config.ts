@@ -1,5 +1,6 @@
 import { definePolicy } from "./src/index";
 
+import denyGitAddAndCommit from "./toolgate/policies/deny-git-add-and-commit";
 import allowBunTest from "./toolgate/policies/allow-bun-test";
 import allowExactCommands from "./toolgate/policies/allow-exact-commands";
 import allowGitAdd from "./toolgate/policies/allow-git-add";
@@ -7,6 +8,7 @@ import allowExploreInProject from "./toolgate/policies/allow-explore-in-project"
 import allowReadInProject from "./toolgate/policies/allow-read-in-project";
 
 export default definePolicy([
+  denyGitAddAndCommit,
   allowExactCommands,
   allowBunTest,
   allowGitAdd,
