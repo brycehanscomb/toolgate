@@ -1,0 +1,15 @@
+{
+  "name": "toolgate",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "toolgate": "./src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
