@@ -141,5 +141,40 @@ describe("deny-writes-outside-project", () => {
       );
       expect(result.verdict).toBe(DENY);
     });
+
+    it("denies cat > with tilde path", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cat > ~/other-project/foo.ts << 'EOF'\ncontent\nEOF"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies redirect to tilde path outside project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("echo hi > ~/.bashrc"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies tee with tilde path", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("echo hi | tee ~/evil.txt"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies redirect with relative path outside project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("echo hi > ../other-project/foo.ts"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("allows redirect with relative path inside project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("echo hi > ./src/foo.ts"),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
   });
 });

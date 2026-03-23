@@ -15,6 +15,8 @@ import allowFindInProject from "./allow-find-in-project";
 import allowPlanInProject from "./allow-plan-in-project";
 import allowWebFetchClaude from "./allow-webfetch-claude";
 import allowTaskCreate from "./allow-task-create";
+import allowGhReadOnly from "./allow-gh-read-only";
+import allowBashFindInProject from "./allow-bash-find-in-project";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -34,4 +36,6 @@ export const builtinPolicies = [
   allowPlanInProject,
   allowWebFetchClaude,
   allowTaskCreate,
+  allowGhReadOnly,
+  allowBashFindInProject,
 ];

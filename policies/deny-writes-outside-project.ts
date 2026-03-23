@@ -1,3 +1,5 @@
+import { homedir } from "os";
+import { resolve } from "path";
 import { parse } from "shell-quote";
 import { deny, next, type Policy } from "../src";
 
@@ -32,7 +34,7 @@ const denyWritesOutsideProject: Policy = {
       if (typeof command !== "string") {
         return next();
       }
-      const outside = findBashWriteOutsideProject(command, projectRoot);
+      const outside = findBashWriteOutsideProject(command, projectRoot, call.context.cwd);
       if (outside) {
         return deny(`Write blocked: ${outside} is outside project root`);
       }
@@ -48,6 +50,27 @@ function isInsideProject(filePath: string, projectRoot: string): boolean {
 }
 
 /**
+ * Resolve a path that may use ~ or be relative, returning an absolute path.
+ * Returns null if the path can't be meaningfully resolved.
+ */
+function resolvePath(p: string, cwd: string): string | null {
+  if (p.startsWith("~/")) {
+    return homedir() + p.slice(1);
+  }
+  if (p === "~") {
+    return homedir();
+  }
+  if (p.startsWith("/")) {
+    return p;
+  }
+  // Relative path — resolve against cwd
+  if (!p.startsWith("-")) {
+    return resolve(cwd, p);
+  }
+  return null;
+}
+
+/**
  * Parse a Bash command and return the first path written outside the project,
  * or null if no outside writes are detected.
  *
@@ -59,6 +82,7 @@ function isInsideProject(filePath: string, projectRoot: string): boolean {
 function findBashWriteOutsideProject(
   command: string,
   projectRoot: string,
+  cwd: string,
 ): string | null {
   for (const line of command.split("\n")) {
     const tokens = parse(line);
@@ -74,8 +98,9 @@ function findBashWriteOutsideProject(
         (token.op === ">" || token.op === ">>")
       ) {
         const target = tokens[i + 1];
-        if (typeof target === "string" && target.startsWith("/")) {
-          if (!isInsideProject(target, projectRoot)) {
+        if (typeof target === "string") {
+          const resolved = resolvePath(target, cwd);
+          if (resolved && !isInsideProject(resolved, projectRoot)) {
             return target;
           }
         }
@@ -92,7 +117,8 @@ function findBashWriteOutsideProject(
         const arg = tokens[j];
         if (typeof arg !== "string") break;
         if (arg.startsWith("-")) continue;
-        if (arg.startsWith("/") && !isInsideProject(arg, projectRoot)) {
+        const resolved = resolvePath(arg, cwd);
+        if (resolved && !isInsideProject(resolved, projectRoot)) {
           return arg;
         }
       }
