@@ -38,7 +38,7 @@ switch (command) {
   default:
     console.error('Usage: toolgate <run|init|test|list>')
     console.error('  run              Run policy chain (called by hooks)')
-    console.error('  init             Set up global config + hook')
+    console.error('  init             Register PreToolUse hook')
     console.error('  init --project   Set up project config')
     console.error('  test <tool> [args]  Dry-run a tool call')
     console.error('  list             List all loaded policies')

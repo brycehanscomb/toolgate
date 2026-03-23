@@ -11,7 +11,7 @@ Toolgate is a policy engine for Claude Code's PreToolUse hooks. It intercepts to
 ```bash
 bun test                              # run all tests
 bun test src/                         # run core tests only
-bun test toolgate/policies/tests/     # run policy tests only
+bun test policies/tests/              # run policy tests only
 bun test <path/to/file.test.ts>       # run a single test file
 bun install                           # install dependencies
 ```
@@ -27,17 +27,17 @@ Use Bun exclusively — not Node.js, npm, yarn, or pnpm. Bun auto-loads `.env`.
 - **`types.ts`** — `ToolCall`, `CallContext`, `VerdictResult`, `Middleware`, `Policy` type definitions
 - **`verdicts.ts`** — Symbol-based verdict system: `ALLOW`, `DENY`, `NEXT` with helpers `allow()`, `deny(reason?)`, `next()`
 - **`policy.ts`** — `definePolicy()` and `runPolicy()` — sequential policy chain, returns first non-NEXT verdict
-- **`config.ts`** — Loads project config (`./toolgate.config.ts` or `./.claude/toolgate.config.ts`) then global (`~/.claude/toolgate.config.ts`), concatenates policy arrays
+- **`config.ts`** — Loads project config (`./toolgate.config.ts` or `./.claude/toolgate.config.ts`) then built-in policies, concatenates policy arrays
 - **`runner.ts`** — Bridges Claude Code hook stdin/stdout protocol to the policy engine
 - **`cli.ts`** — Subcommands: `run` (hook handler), `init` (setup), `test` (dry-run), `list` (show loaded policies)
 - **`list-cmd.ts`** — Lists all loaded policies with names and descriptions
 - **`testing.ts`** — `testPolicy()` assertion helper for policy test cases
 
-### Policies (`toolgate/policies/`)
+### Built-in Policies (`policies/`)
 
 Each policy is a `Policy` object with `name`, `description`, and `handler`. The handler is a `Middleware` function that returns `next()` to pass through, `allow()` to permit, or `deny(reason)` to block.
 
-Config file (`toolgate.config.ts`) wires policies into the chain via `definePolicy([...])`. Order matters — first non-NEXT verdict wins.
+Built-in policies are exported from `policies/index.ts` and automatically appended after any project-level policies. Project configs (`toolgate.config.ts`) can add extra policies via `definePolicy([...])`. Order matters — first non-NEXT verdict wins.
 
 ### Key Patterns
 
@@ -50,7 +50,7 @@ Config file (`toolgate.config.ts`) wires policies into the chain via `definePoli
 ## Writing a Policy
 
 ```ts
-import { allow, next, type Policy } from "../../src";
+import { allow, next, type Policy } from "../src";
 
 const myPolicy: Policy = {
   name: "My policy",

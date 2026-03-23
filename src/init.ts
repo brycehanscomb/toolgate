@@ -8,9 +8,7 @@ function findToolgateSrc(): string {
   try {
     const binPath = execSync('which toolgate', { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim()
     const linkTarget = execSync(`readlink "${binPath}"`, { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim()
-    // Resolve relative symlink targets against the symlink's directory
     const realPath = resolve(dirname(binPath), linkTarget)
-    // realPath is e.g. /path/to/toolgate/src/cli.ts → go up to package root
     const pkgRoot = join(realPath, '..', '..')
     return join(pkgRoot, 'src', 'index')
   } catch {
@@ -18,7 +16,7 @@ function findToolgateSrc(): string {
   }
 }
 
-function configTemplate(srcPath: string): string {
+function projectTemplate(srcPath: string): string {
   return `import { definePolicy, allow, deny, next } from '${srcPath}'
 
 export default definePolicy([
@@ -34,19 +32,10 @@ export default definePolicy([
 
 export async function initGlobal(): Promise<void> {
   const claudeDir = join(homedir(), '.claude')
-  const configPath = join(claudeDir, 'toolgate.config.ts')
-
-  if (existsSync(configPath)) {
-    console.log(`Global config already exists: ${configPath}`)
-  } else {
-    await mkdir(claudeDir, { recursive: true })
-    const srcPath = findToolgateSrc()
-    await writeFile(configPath, configTemplate(srcPath))
-    console.log(`Created global config: ${configPath}`)
-  }
-
-  // Register hook in settings.json
   const settingsPath = join(claudeDir, 'settings.json')
+
+  await mkdir(claudeDir, { recursive: true })
+
   let settings: any = {}
   if (existsSync(settingsPath)) {
     settings = JSON.parse(await readFile(settingsPath, 'utf-8'))
@@ -54,11 +43,6 @@ export async function initGlobal(): Promise<void> {
 
   if (!settings.hooks) settings.hooks = {}
   if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = []
-
-  const hookEntry = {
-    type: 'command',
-    command: 'toolgate run',
-  }
 
   const alreadyRegistered = settings.hooks.PreToolUse.some(
     (entry: any) =>
@@ -68,7 +52,7 @@ export async function initGlobal(): Promise<void> {
 
   if (!alreadyRegistered) {
     settings.hooks.PreToolUse.push({
-      hooks: [hookEntry],
+      hooks: [{ type: 'command', command: 'toolgate run' }],
     })
     await writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n')
     console.log(`Registered PreToolUse hook in: ${settingsPath}`)
@@ -86,6 +70,6 @@ export async function initProject(cwd: string): Promise<void> {
   }
 
   const srcPath = findToolgateSrc()
-  await writeFile(configPath, configTemplate(srcPath))
+  await writeFile(configPath, projectTemplate(srcPath))
   console.log(`Created project config: ${configPath}`)
 }

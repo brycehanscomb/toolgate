@@ -1,7 +1,7 @@
 import { existsSync } from 'fs'
 import { join } from 'path'
-import { homedir } from 'os'
 import type { Policy } from './types'
+import { builtinPolicies } from '../policies'
 
 const CONFIG_FILENAME = 'toolgate.config.ts'
 
@@ -13,10 +13,6 @@ export async function findProjectConfig(cwd: string): Promise<string | null> {
   if (existsSync(claudeConfig)) return claudeConfig
 
   return null
-}
-
-export function findGlobalConfig(): string {
-  return join(homedir(), '.claude', CONFIG_FILENAME)
 }
 
 export async function loadConfigFile(path: string): Promise<Policy[]> {
@@ -36,10 +32,7 @@ export async function loadConfigs(cwd: string): Promise<Policy[]> {
     policies.push(...await loadConfigFile(projectPath))
   }
 
-  const globalPath = findGlobalConfig()
-  if (existsSync(globalPath)) {
-    policies.push(...await loadConfigFile(globalPath))
-  }
+  policies.push(...builtinPolicies)
 
   return policies
 }

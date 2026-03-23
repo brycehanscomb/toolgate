@@ -22,24 +22,30 @@ toolgate init
 toolgate init --project
 ```
 
-This creates a `toolgate.config.ts` and registers a `PreToolUse` hook in `~/.claude/settings.json`.
+This registers a `PreToolUse` hook in `~/.claude/settings.json`. Toolgate ships with built-in policies that are always active.
 
 ## Configuration
 
-Policies are defined in `toolgate.config.ts` (project root or `~/.claude/` for global). A config is an array of `Policy` objects:
+Optionally add project-specific policies in `toolgate.config.ts` (project root or `.claude/`). These run **before** built-in policies:
 
 ```ts
-import { definePolicy } from "toolgate";
-import allowGitAdd from "./policies/allow-git-add";
-import allowBunTest from "./policies/allow-bun-test";
+import { definePolicy, deny, next } from "toolgate";
 
 export default definePolicy([
-  allowGitAdd,
-  allowBunTest,
+  {
+    name: "Deny dangerous commands",
+    description: "Blocks rm -rf",
+    handler: async (call) => {
+      if (call.tool === "Bash" && call.args.command?.includes("rm -rf")) {
+        return deny("Destructive command blocked");
+      }
+      return next();
+    },
+  },
 ]);
 ```
 
-Project policies run first, then global. The first non-`next()` verdict wins.
+Project policies run first, then built-in. The first non-`next()` verdict wins.
 
 ## Writing Policies
 
@@ -88,7 +94,7 @@ When writing policies for Bash commands, use [`shell-quote`](https://www.npmjs.c
 - Shell substitution (`$()`, backticks)
 - Multiline commands (newlines are command separators)
 
-See [`toolgate/policies/allow-git-add.ts`](toolgate/policies/allow-git-add.ts) for a hardened example.
+See [`policies/allow-git-add.ts`](policies/allow-git-add.ts) for a hardened example.
 
 ## CLI
 

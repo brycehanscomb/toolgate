@@ -1,5 +1,5 @@
-import { existsSync } from 'fs'
-import { findProjectConfig, findGlobalConfig, loadConfigFile } from './config'
+import { findProjectConfig, loadConfigFile } from './config'
+import { builtinPolicies } from '../policies'
 import type { Policy } from './types'
 
 function printPolicies(policies: Policy[]): void {
@@ -26,23 +26,14 @@ export async function listPolicies(): Promise<void> {
     console.log()
   }
 
-  const globalPath = findGlobalConfig()
-  if (existsSync(globalPath)) {
-    const policies = await loadConfigFile(globalPath)
-    console.log(`Global (${globalPath}):`)
-    if (policies.length === 0) {
-      console.log('  (none)')
-    } else {
-      printPolicies(policies)
-    }
-    total += policies.length
-    console.log()
+  console.log('Built-in:')
+  if (builtinPolicies.length === 0) {
+    console.log('  (none)')
+  } else {
+    printPolicies(builtinPolicies)
   }
-
-  if (total === 0) {
-    console.log('No policies loaded. Configure toolgate.config.ts first.')
-    process.exit(1)
-  }
+  total += builtinPolicies.length
+  console.log()
 
   console.log(`${total} policies loaded.`)
 }

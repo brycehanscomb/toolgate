@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { findProjectConfig, findGlobalConfig } from './config'
+import { findProjectConfig } from './config'
 import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -42,9 +42,3 @@ describe('findProjectConfig', () => {
   })
 })
 
-describe('findGlobalConfig', () => {
-  it('returns path under ~/.claude/', () => {
-    const result = findGlobalConfig()
-    expect(result).toContain('.claude/toolgate.config.ts')
-  })
-})
