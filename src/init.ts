@@ -1,5 +1,5 @@
 import { existsSync } from 'fs'
-import { join } from 'path'
+import { join, resolve, dirname } from 'path'
 import { homedir } from 'os'
 import { mkdir, writeFile, readFile } from 'fs/promises'
 import { execSync } from 'child_process'
@@ -7,34 +7,27 @@ import { execSync } from 'child_process'
 function findToolgateSrc(): string {
   try {
     const binPath = execSync('which toolgate', { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim()
-    const realPath = execSync(`readlink -f "${binPath}" 2>/dev/null || readlink "${binPath}" 2>/dev/null || echo "${binPath}"`, { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim()
-    const srcDir = join(realPath, '..', '..')
-    return join(srcDir, 'src', 'index')
+    const linkTarget = execSync(`readlink "${binPath}"`, { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim()
+    // Resolve relative symlink targets against the symlink's directory
+    const realPath = resolve(dirname(binPath), linkTarget)
+    // realPath is e.g. /path/to/toolgate/src/cli.ts → go up to package root
+    const pkgRoot = join(realPath, '..', '..')
+    return join(pkgRoot, 'src', 'index')
   } catch {
     return 'toolgate'
   }
 }
 
-const PROJECT_TEMPLATE = `import { definePolicy, allow, deny, next } from 'toolgate'
-
-export default definePolicy([
-  // Example: allow all file reads
-  // async (call) => call.tool === 'Read' ? allow() : next(),
-
-  // Default: no opinion (Claude Code prompts as normal)
-  async () => next(),
-])
-`
-
-function globalTemplate(srcPath: string): string {
+function configTemplate(srcPath: string): string {
   return `import { definePolicy, allow, deny, next } from '${srcPath}'
 
 export default definePolicy([
-  // Example: allow all file reads
-  // async (call) => call.tool === 'Read' ? allow() : next(),
-
-  // Default: no opinion (Claude Code prompts as normal)
-  async () => next(),
+  // Example:
+  // {
+  //   name: 'Allow file reads',
+  //   description: 'Permits all Read tool calls',
+  //   handler: async (call) => call.tool === 'Read' ? allow() : next(),
+  // },
 ])
 `
 }
@@ -48,7 +41,7 @@ export async function initGlobal(): Promise<void> {
   } else {
     await mkdir(claudeDir, { recursive: true })
     const srcPath = findToolgateSrc()
-    await writeFile(configPath, globalTemplate(srcPath))
+    await writeFile(configPath, configTemplate(srcPath))
     console.log(`Created global config: ${configPath}`)
   }
 
@@ -92,6 +85,7 @@ export async function initProject(cwd: string): Promise<void> {
     return
   }
 
-  await writeFile(configPath, PROJECT_TEMPLATE)
+  const srcPath = findToolgateSrc()
+  await writeFile(configPath, configTemplate(srcPath))
   console.log(`Created project config: ${configPath}`)
 }
