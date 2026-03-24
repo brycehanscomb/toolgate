@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, DENY, NEXT, type ToolCall } from "toolgate";
 import denyWritesOutsideProject from "../deny-writes-outside-project";
 
 function write(filePath: string, projectRoot: string | null = "/home/user/project"): ToolCall {
@@ -175,6 +175,35 @@ describe("deny-writes-outside-project", () => {
         bash("echo hi > ./src/foo.ts"),
       );
       expect(result.verdict).toBe(NEXT);
+    });
+  });
+
+  describe("allows safe write targets", () => {
+    it("allows redirect to /dev/null", async () => {
+      const result = await denyWritesOutsideProject.handler(bash("cat foo 2>/dev/null"));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows redirect to /dev/stderr", async () => {
+      const result = await denyWritesOutsideProject.handler(bash("echo err > /dev/stderr"));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows redirect to /dev/stdout", async () => {
+      const result = await denyWritesOutsideProject.handler(bash("echo ok > /dev/stdout"));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows tee to /dev/null", async () => {
+      const result = await denyWritesOutsideProject.handler(bash("echo hi | tee /dev/null"));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("denies when mix of safe and outside targets", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("echo hi > /dev/null\necho hi > /etc/passwd"),
+      );
+      expect(result.verdict).toBe(DENY);
     });
   });
 });

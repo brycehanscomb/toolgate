@@ -62,11 +62,19 @@ export function buildHookResponse(verdict: VerdictResult): HookResponse {
 }
 
 export async function run(): Promise<void> {
-  const input: HookInput = JSON.parse(await Bun.stdin.text())
-  const call = buildToolCall(input)
-  const policies = await loadConfigs(call.context.cwd)
-  const verdict = await runPolicy(policies, call)
-  const response = buildHookResponse(verdict)
-  process.stdout.write(JSON.stringify(response))
-  process.exit(0)
+  try {
+    const input: HookInput = JSON.parse(await Bun.stdin.text())
+    const call = buildToolCall(input)
+    const policies = await loadConfigs(call.context.cwd)
+    const verdict = await runPolicy(policies, call)
+    const response = buildHookResponse(verdict)
+    process.stdout.write(JSON.stringify(response))
+    process.exit(0)
+  } catch (err) {
+    const reason = `toolgate error: ${err instanceof Error ? err.message : String(err)}`
+    console.error(reason)
+    const response = buildHookResponse({ verdict: DENY, reason })
+    process.stdout.write(JSON.stringify(response))
+    process.exit(0)
+  }
 }

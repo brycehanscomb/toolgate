@@ -1,18 +1,41 @@
 import { existsSync } from 'fs'
-import { join } from 'path'
+import { homedir } from 'os'
+import { join, dirname } from 'path'
 import type { Policy } from './types'
 import { builtinPolicies } from '../policies'
 
 const CONFIG_FILENAME = 'toolgate.config.ts'
 
-export async function findProjectConfig(cwd: string): Promise<string | null> {
-  const rootConfig = join(cwd, CONFIG_FILENAME)
+export function findConfigInDir(dir: string): string | null {
+  const rootConfig = join(dir, CONFIG_FILENAME)
   if (existsSync(rootConfig)) return rootConfig
 
-  const claudeConfig = join(cwd, '.claude', CONFIG_FILENAME)
+  const claudeConfig = join(dir, '.claude', CONFIG_FILENAME)
   if (existsSync(claudeConfig)) return claudeConfig
 
   return null
+}
+
+/**
+ * Walk from cwd up to $HOME, collecting all toolgate configs.
+ * Returns innermost first (most specific takes priority).
+ */
+export function findAllConfigs(cwd: string): string[] {
+  const home = homedir()
+  const configs: string[] = []
+  let dir = cwd
+
+  while (true) {
+    const config = findConfigInDir(dir)
+    if (config) configs.push(config)
+
+    if (dir === home || dir === '/') break
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+
+  return configs
 }
 
 export async function loadConfigFile(path: string): Promise<Policy[]> {
@@ -27,9 +50,12 @@ export async function loadConfigFile(path: string): Promise<Policy[]> {
 export async function loadConfigs(cwd: string): Promise<Policy[]> {
   const policies: Policy[] = []
 
-  const projectPath = await findProjectConfig(cwd)
-  if (projectPath) {
-    policies.push(...await loadConfigFile(projectPath))
+  for (const configPath of findAllConfigs(cwd)) {
+    try {
+      policies.push(...await loadConfigFile(configPath))
+    } catch (err) {
+      console.error(`toolgate: failed to load config ${configPath}: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 
   policies.push(...builtinPolicies)
