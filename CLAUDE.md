@@ -39,6 +39,10 @@ Each policy is a `Policy` object with `name`, `description`, and `handler`. The 
 
 Built-in policies are exported from `policies/index.ts` and automatically appended after any project-level policies. Project configs (`toolgate.config.ts`) can add extra policies via `definePolicy([...])`. Order matters — first non-NEXT verdict wins.
 
+### Adding/Renaming Policies
+
+When creating a new policy or renaming an existing one, you **must** update `policies/index.ts` to import and include it in the `builtinPolicies` array. A policy file that isn't registered in the index will have no effect.
+
 ### Key Patterns
 
 - **Whitelist approach**: Policies explicitly allow known-safe patterns; everything else falls through as `next()` (prompts user)
