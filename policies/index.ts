@@ -14,9 +14,11 @@ import allowSearchInProject from "./allow-search-in-project";
 import allowFindInProject from "./allow-find-in-project";
 import allowPlanInProject from "./allow-plan-in-project";
 import allowWebFetchClaude from "./allow-webfetch-claude";
-import allowTaskCreate from "./allow-task-create";
+import allowTaskCrud from "./allow-task-crud";
 import allowGhReadOnly from "./allow-gh-read-only";
 import allowBashFindInProject from "./allow-bash-find-in-project";
+import allowSuperpowersSkills from "./allow-superpowers-skills";
+import allowGitRevParse from "./allow-git-rev-parse";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -35,7 +37,9 @@ export const builtinPolicies = [
   allowFindInProject,
   allowPlanInProject,
   allowWebFetchClaude,
-  allowTaskCreate,
+  allowTaskCrud,
   allowGhReadOnly,
   allowBashFindInProject,
+  allowSuperpowersSkills,
+  allowGitRevParse,
 ];
