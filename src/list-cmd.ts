@@ -1,4 +1,4 @@
-import { findProjectConfig, loadConfigFile } from './config'
+import { findAllConfigs, loadConfigFile } from './config'
 import { builtinPolicies } from '../policies'
 import type { Policy } from './types'
 
@@ -13,10 +13,10 @@ export async function listPolicies(): Promise<void> {
   const cwd = process.cwd()
   let total = 0
 
-  const projectPath = await findProjectConfig(cwd)
-  if (projectPath) {
-    const policies = await loadConfigFile(projectPath)
-    console.log(`Project (${projectPath}):`)
+  const configPaths = findAllConfigs(cwd)
+  for (const configPath of configPaths) {
+    const policies = await loadConfigFile(configPath)
+    console.log(`Project (${configPath}):`)
     if (policies.length === 0) {
       console.log('  (none)')
     } else {
