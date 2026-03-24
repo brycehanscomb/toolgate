@@ -1,20 +1,27 @@
 import { resolve } from "node:path";
 import { allow, next, type Policy } from "../src";
-import { safeBashTokens } from "./parse-bash";
+import { safeBashPipeline, isSafeFilter } from "./parse-bash";
 
 /**
  * Allow simple `find` commands when all path arguments are within the project root.
  * Also allows bare `find` or `find .` when cwd is within the project.
+ * Supports piping to safe filter commands (grep, head, tail, etc.)
  */
 const allowBashFindInProject: Policy = {
   name: "Allow bash find in project",
   description: "Permits find commands when all paths are within the project root",
   handler: async (call) => {
-    const tokens = safeBashTokens(call);
-    if (!tokens) return next();
+    const pipeline = safeBashPipeline(call);
+    if (!pipeline) return next();
 
+    const tokens = pipeline[0];
     if (tokens[0] !== "find") return next();
     if (!call.context.projectRoot) return next();
+
+    // All pipe segments after the first must be safe filters
+    for (let i = 1; i < pipeline.length; i++) {
+      if (!isSafeFilter(pipeline[i])) return next();
+    }
 
     const root = call.context.projectRoot;
     const args = tokens.slice(1);

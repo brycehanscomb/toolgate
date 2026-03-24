@@ -78,6 +78,42 @@ describe("allow-bash-find-in-project", () => {
     }
   });
 
+  describe("allows find piped to safe filters", () => {
+    const allowed = [
+      "find . -name '*.ts' | head -10",
+      "find . -name '*.ts' | grep src",
+      "find . -type f | wc -l",
+      "find . -name '*.php' | grep -i controller | head -5",
+      `find ${PROJECT}/src -name '*.ts' | sort`,
+      "find . | tail -20",
+      "find . -name '*.ts' | cut -d/ -f2 | sort | uniq",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await allowBashFindInProject.handler(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("rejects find piped to unsafe commands", () => {
+    const rejected = [
+      "find . | xargs rm",
+      "find . | sh -c 'cat'",
+      "find . | tee /tmp/out",
+      "find . -name '*.ts' | sort -o outfile",
+      "find . | uniq input output",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowBashFindInProject.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
   it("passes through when no project root", async () => {
     const result = await allowBashFindInProject.handler(bash("find .", PROJECT, null));
     expect(result.verdict).toBe(NEXT);
