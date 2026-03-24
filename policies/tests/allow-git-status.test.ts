@@ -32,7 +32,7 @@ describe("allow-git-status", () => {
   describe("rejects compound commands", () => {
     const rejected = [
       "git status && rm -rf /",
-      "git status | cat /etc/passwd",
+      "git status | bash -c evil",
       "git status\necho pwned",
     ];
 

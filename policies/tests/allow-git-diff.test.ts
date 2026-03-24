@@ -34,7 +34,7 @@ describe("allow-git-diff", () => {
   describe("rejects compound commands", () => {
     const rejected = [
       "git diff && rm -rf /",
-      "git diff | cat /etc/passwd",
+      "git diff | bash -c evil",
       "git diff\necho pwned",
     ];
 

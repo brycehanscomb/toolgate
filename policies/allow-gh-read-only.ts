@@ -1,5 +1,5 @@
 import { allow, next, type Policy } from "../src";
-import { safeBashTokens } from "./parse-bash";
+import { safeBashTokensOrPipeline } from "./parse-bash";
 
 /**
  * Read-only gh CLI subcommands that never mutate remote state.
@@ -23,7 +23,7 @@ const allowGhReadOnly: Policy = {
   description:
     "Permits read-only gh CLI commands (view, list, diff, checks, search)",
   handler: async (call) => {
-    const tokens = safeBashTokens(call);
+    const tokens = safeBashTokensOrPipeline(call);
     if (!tokens) return next();
 
     if (tokens[0] !== "gh") return next();

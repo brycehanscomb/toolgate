@@ -4,6 +4,7 @@ import { run } from './runner'
 import { initGlobal, initProject } from './init'
 import { testTool } from './test-cmd'
 import { listPolicies } from './list-cmd'
+import { auditPermissions } from './audit-cmd'
 
 const [command, ...args] = process.argv.slice(2)
 
@@ -35,12 +36,19 @@ switch (command) {
     await listPolicies()
     break
 
+  case 'audit': {
+    const auditFormat = args.includes('--json') ? 'json' as const : 'table' as const
+    await auditPermissions(auditFormat)
+    break
+  }
   default:
-    console.error('Usage: toolgate <run|init|test|list>')
+    console.error('Usage: toolgate <run|init|test|list|audit>')
     console.error('  run              Run policy chain (called by hooks)')
     console.error('  init             Register PreToolUse hook')
     console.error('  init --project   Set up project config')
     console.error('  test <tool> [args]  Dry-run a tool call')
     console.error('  list             List all loaded policies')
+    console.error('  audit            Audit settings.local.json against policies')
+    console.error('  audit --json     Output audit as JSON')
     process.exit(1)
 }

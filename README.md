@@ -88,13 +88,54 @@ Each policy handler receives a `ToolCall` with:
 
 ### Bash Policy Safety
 
-When writing policies for Bash commands, use [`shell-quote`](https://www.npmjs.com/package/shell-quote) to parse commands into tokens rather than matching raw strings with regex. Always reject:
+When writing policies for Bash commands, don't parse raw strings with regex — use the utilities from `toolgate/utils` instead. They handle shell quoting, operator detection, and metacharacter rejection for you.
 
-- Command chaining (`&&`, `||`, `;`, `|`, `&`)
-- Shell substitution (`$()`, backticks)
-- Multiline commands (newlines are command separators)
+```ts
+import { safeBashTokens } from "toolgate/utils";
+import { allow, next, type Policy } from "toolgate";
 
-See [`policies/allow-git-add.ts`](policies/allow-git-add.ts) for a hardened example.
+const allowMake: Policy = {
+  name: "Allow make",
+  description: "Permits simple make commands",
+  handler: async (call) => {
+    const tokens = safeBashTokens(call);
+    if (!tokens) return next();
+    if (tokens[0] === "make") return allow();
+    return next();
+  },
+};
+```
+
+#### `safeBashTokens(call)`
+
+Parses a Bash tool call into a flat `string[]` of tokens. Returns `null` if the command contains newlines, shell operators (`&&`, `||`, `;`, `|`, `&`), redirects, or metacharacters (`$`, `` ` ``, `{`, `}`, etc.). Use this for simple, single-command policies.
+
+#### `safeBashPipeline(call)`
+
+Like `safeBashTokens`, but allows pipes. Returns `string[][]` — one token array per pipe segment. Returns `null` for non-pipe operators or unsafe patterns. Use this when you need to allow commands like `git log | head`.
+
+```ts
+import { safeBashPipeline, isSafeFilter } from "toolgate/utils";
+
+const tokens = safeBashPipeline(call);
+if (!tokens) return next();
+
+// First segment is the main command, rest must be safe filters
+const [main, ...filters] = tokens;
+if (main[0] === "git" && filters.every(isSafeFilter)) {
+  return allow();
+}
+```
+
+#### `isSafeFilter(tokens)`
+
+Returns `true` if a token array is a safe pipe filter — a command that only reads stdin and writes stdout. Safe filters: `grep`, `egrep`, `fgrep`, `head`, `tail`, `wc`, `cat`, `tr`, `cut`, `sort` (without `-o`), `uniq`.
+
+#### `findGitRoot(cwd)`
+
+Returns the git repository root for the given directory, or `null` if not in a repo.
+
+See [`policies/allow-git-add.ts`](policies/allow-git-add.ts) for a full hardened example.
 
 ## CLI
 

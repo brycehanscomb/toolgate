@@ -87,6 +87,7 @@ describe("allow-bash-find-in-project", () => {
       `find ${PROJECT}/src -name '*.ts' | sort`,
       "find . | tail -20",
       "find . -name '*.ts' | cut -d/ -f2 | sort | uniq",
+      "find resources -type f | grep -E '(form|Form)' | sort | head -80",
     ];
 
     for (const cmd of allowed) {
@@ -104,6 +105,41 @@ describe("allow-bash-find-in-project", () => {
       "find . | tee /tmp/out",
       "find . -name '*.ts' | sort -o outfile",
       "find . | uniq input output",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowBashFindInProject.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects dangerous find flags", () => {
+    const rejected = [
+      "find . -exec rm {} \\;",
+      "find . -execdir cat {} \\;",
+      "find . -ok rm {} \\;",
+      "find . -okdir rm {} \\;",
+      "find . -delete",
+      "find . -name '*.log' -delete",
+      "find . -fls /tmp/out",
+      "find . -fprint /tmp/out",
+      "find . -fprint0 /tmp/out",
+      "find . -fprintf /tmp/out %p",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowBashFindInProject.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects parentheses grouping", () => {
+    const rejected = [
+      "find . \\( -name '*.ts' -or -name '*.js' \\)",
     ];
 
     for (const cmd of rejected) {

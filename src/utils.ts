@@ -9,3 +9,5 @@ export function findGitRoot(cwd: string): string | null {
     return null
   }
 }
+
+export { safeBashTokens, safeBashPipeline, isSafeFilter } from '../policies/parse-bash'

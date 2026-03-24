@@ -100,7 +100,7 @@ describe("allow-gh-read-only", () => {
   describe("rejects compound commands", () => {
     const rejected = [
       "gh issue view 123 && rm -rf /",
-      "gh api /user | cat /etc/passwd",
+      "gh api /user | bash -c evil",
       "gh issue view 123\necho pwned",
     ];
 

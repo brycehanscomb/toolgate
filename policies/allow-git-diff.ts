@@ -1,15 +1,14 @@
 import { allow, next, type Policy } from "../src";
-import { safeBashTokens } from "./parse-bash";
+import { safeBashTokensOrPipeline } from "./parse-bash";
 
 /**
- * Allow simple `git diff` commands. Rejects compound commands,
- * shell substitutions, and multiline inputs.
+ * Allow simple `git diff` commands, optionally piped through safe filters.
  */
 const allowGitDiff: Policy = {
   name: "Allow git diff",
-  description: "Permits simple git diff commands without chaining or substitution",
+  description: "Permits git diff commands, optionally piped through safe filters",
   handler: async (call) => {
-    const tokens = safeBashTokens(call);
+    const tokens = safeBashTokensOrPipeline(call);
     if (!tokens) return next();
 
     if (tokens[0] === "git" && tokens[1] === "diff") {

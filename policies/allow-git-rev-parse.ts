@@ -1,16 +1,15 @@
 import { allow, next, type Policy } from "../src";
-import { safeBashTokens } from "./parse-bash";
+import { safeBashTokensOrPipeline } from "./parse-bash";
 
 /**
- * Allow simple `git rev-parse` commands. Rejects compound commands,
- * shell substitutions, and multiline inputs.
+ * Allow simple `git rev-parse` commands, optionally piped through safe filters.
  */
 const allowGitRevParse: Policy = {
   name: "Allow git rev-parse",
   description:
-    "Permits simple git rev-parse commands without chaining or substitution",
+    "Permits git rev-parse commands, optionally piped through safe filters",
   handler: async (call) => {
-    const tokens = safeBashTokens(call);
+    const tokens = safeBashTokensOrPipeline(call);
     if (!tokens) return next();
 
     if (tokens[0] === "git" && tokens[1] === "rev-parse") {

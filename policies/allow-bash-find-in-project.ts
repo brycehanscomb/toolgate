@@ -23,6 +23,31 @@ const allowBashFindInProject: Policy = {
       if (!isSafeFilter(pipeline[i])) return next();
     }
 
+    // Whitelist of safe find predicates and options (read-only, no side effects)
+    const SAFE_FLAGS = new Set([
+      // Output format
+      "-print", "-print0", "-ls",
+      // Filtering predicates
+      "-name", "-iname", "-path", "-ipath", "-regex", "-iregex",
+      "-type", "-size", "-empty", "-newer", "-perm", "-user", "-group",
+      "-mtime", "-atime", "-ctime", "-mmin", "-amin", "-cmin",
+      "-readable", "-writable", "-executable",
+      // Depth control
+      "-maxdepth", "-mindepth",
+      // Logical operators (no parens — too hard to reason about)
+      "-not", "-and", "-or", "!",
+      // Misc safe options
+      "-follow", "-xdev", "-mount", "-daystart",
+      "-true", "-false", "-prune",
+    ]);
+
+    // Every flag-like token must be in the whitelist
+    for (const t of tokens.slice(1)) {
+      if (t.startsWith("-") && !SAFE_FLAGS.has(t)) return next();
+      // Block grouping parens
+      if (t === "(" || t === ")") return next();
+    }
+
     const root = call.context.projectRoot;
     const args = tokens.slice(1);
 

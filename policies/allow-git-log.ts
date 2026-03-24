@@ -1,15 +1,14 @@
 import { allow, next, type Policy } from "../src";
-import { safeBashTokens } from "./parse-bash";
+import { safeBashTokensOrPipeline } from "./parse-bash";
 
 /**
- * Allow simple `git log` commands. Rejects compound commands,
- * shell substitutions, and multiline inputs.
+ * Allow simple `git log` commands, optionally piped through safe filters.
  */
 const allowGitLog: Policy = {
   name: "Allow git log",
-  description: "Permits simple git log commands without chaining or substitution",
+  description: "Permits git log commands, optionally piped through safe filters",
   handler: async (call) => {
-    const tokens = safeBashTokens(call);
+    const tokens = safeBashTokensOrPipeline(call);
     if (!tokens) return next();
 
     if (tokens[0] === "git" && tokens[1] === "log") {

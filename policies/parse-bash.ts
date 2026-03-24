@@ -119,15 +119,34 @@ export function safeBashPipeline(call: ToolCall): string[][] | null {
       return null;
     }
     if (typeof token !== "string") return null;
-    if (/[`$|;&(){}]/.test(token)) return null;
+    if (/[`$;&]/.test(token)) return null;
     current.push(token);
   }
 
   if (current.length === 0) return null;
   segments.push(current);
 
+  // Commands that accept regex/glob patterns may have |(){} in their args.
+  // For all other commands, reject those characters as a defense-in-depth measure.
+  for (const seg of segments) {
+    if (!REGEX_COMMANDS.has(seg[0])) {
+      if (seg.some((t) => /[|(){}]/.test(t))) return null;
+    }
+  }
+
   return segments;
 }
+
+/**
+ * Commands whose arguments commonly contain regex/glob characters (|, (), {}).
+ * These get a relaxed metacharacter check — only `$`, `` ` ``, `;`, `&` are
+ * rejected in their tokens. All other commands get the full check.
+ */
+const REGEX_COMMANDS = new Set([
+  "grep", "egrep", "fgrep",
+  "find",
+  "tr",
+]);
 
 /**
  * Commands that are safe to use as pipe filters — they only read stdin
@@ -169,4 +188,26 @@ export function isSafeFilter(tokens: string[]): boolean {
   if (check) return check(tokens);
 
   return false;
+}
+
+/**
+ * Parse a Bash tool call into safe string tokens, allowing pipes to safe filters.
+ *
+ * Like `safeBashTokens` but also accepts commands piped through safe filter
+ * commands (grep, head, tail, wc, sort, etc.). Returns only the tokens from the
+ * first segment so callers can match the actual command without caring about
+ * the trailing filter.
+ *
+ * Returns `null` if the pipeline is unsafe or any tail segment isn't a safe filter.
+ */
+export function safeBashTokensOrPipeline(call: ToolCall): string[] | null {
+  const segments = safeBashPipeline(call);
+  if (!segments) return null;
+
+  // All segments after the first must be safe filters
+  for (let i = 1; i < segments.length; i++) {
+    if (!isSafeFilter(segments[i])) return null;
+  }
+
+  return segments[0];
 }

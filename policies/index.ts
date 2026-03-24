@@ -1,5 +1,6 @@
 import denyGitAddAndCommit from "./deny-git-add-and-commit";
 import denyWritesOutsideProject from "./deny-writes-outside-project";
+import denyGitDashC from "./deny-git-dash-c";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -24,6 +25,7 @@ export const builtinPolicies = [
   denyGitAddAndCommit,
   redirectPlansToProject,
   denyWritesOutsideProject,
+  denyGitDashC,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,

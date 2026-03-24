@@ -73,3 +73,40 @@ For Bash policies that parse commands, always guard against:
 2. Shell substitution (`$()`, backticks)
 3. Multiline commands (newlines as command separators)
 4. Metacharacters in string tokens that `shell-quote` misses
+
+## Policy Placement
+
+**Built-in policies** (`policies/`) are general-purpose and apply across all projects. Examples: git commands, shell utilities, node package managers, docker.
+
+**Project policies** (`toolgate.config.ts`) are repo-specific. Examples: Laravel artisan commands, project-specific WebFetch domains, custom build scripts.
+
+### Ordering Convention
+
+The `builtinPolicies` array in `policies/index.ts` follows this order:
+
+1. **Deny policies** — catch dangerous patterns first (`deny-git-add-and-commit`, `deny-writes-outside-project`, `deny-git-dash-c`)
+2. **Redirect policies** — modify tool calls before evaluation (`redirect-plans-to-project`)
+3. **Allow policies** — whitelist safe patterns (all `allow-*` policies)
+
+New policies must be inserted at the correct position. First non-`next()` verdict wins, so a misplaced allow could override a deny.
+
+### When to Create a Built-in vs Leave as Static Rule
+
+| Create a policy when... | Leave as static rule when... |
+|---|---|
+| 3+ related rules share a prefix | Single one-off command |
+| Pattern is useful across projects | Deeply project-specific |
+| Command can be safely parsed with `safeBashTokens` | Command is hard to scope safely (e.g., `xargs`) |
+| You want deny semantics with a message | Simple allow is sufficient |
+
+## Auditing Permissions
+
+Use `toolgate audit` to analyze a project's `settings.local.json` against loaded policies:
+
+```bash
+cd /path/to/project
+toolgate audit          # table format
+toolgate audit --json   # machine-readable
+```
+
+This identifies redundant rules (already covered by policies), needed rules (candidates for new policies), and denied rules (conflicts with deny policies).
