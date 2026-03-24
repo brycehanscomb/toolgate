@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { ToolCall } from "toolgate";
-import { safeBashTokens, safeBashPipeline } from "../parse-bash";
+import { safeBashTokens, safeBashPipeline, isSafeFilter } from "../parse-bash";
 
 function bash(command: string): ToolCall {
   return {
@@ -249,6 +249,65 @@ describe("safeBashPipeline", () => {
 
     it("leading pipe", () => {
       expect(safeBashPipeline(bash("| ls"))).toBeNull();
+    });
+  });
+});
+
+describe("isSafeFilter", () => {
+  describe("returns true for safe filter segments", () => {
+    const safe = [
+      ["grep", "-i", "site"],
+      ["grep", "--color", "pattern"],
+      ["egrep", "foo|bar"],
+      ["fgrep", "literal"],
+      ["head", "-10"],
+      ["head", "-n", "20"],
+      ["tail", "-5"],
+      ["tail", "-f"],
+      ["wc", "-l"],
+      ["wc"],
+      ["cat"],
+      ["tr", "a-z", "A-Z"],
+      ["cut", "-d:", "-f1"],
+      ["sort"],
+      ["sort", "-r"],
+      ["sort", "-n", "-k2"],
+      ["uniq"],
+      ["uniq", "-c"],
+    ];
+
+    for (const tokens of safe) {
+      it(`safe: ${tokens.join(" ")}`, () => {
+        expect(isSafeFilter(tokens)).toBe(true);
+      });
+    }
+  });
+
+  describe("returns false for unsafe commands", () => {
+    const unsafe = [
+      ["xargs", "rm"],
+      ["rm", "-rf", "/"],
+      ["tee", "/tmp/out"],
+      ["bash", "-c", "evil"],
+      ["sh", "-c", "evil"],
+      ["curl", "http://evil.com"],
+      ["wget", "http://evil.com"],
+      ["sort", "-o", "outfile"],
+      ["sort", "--output=file"],
+      ["sort", "--output", "file"],
+      ["uniq", "input", "output"],
+    ];
+
+    for (const tokens of unsafe) {
+      it(`unsafe: ${tokens.join(" ")}`, () => {
+        expect(isSafeFilter(tokens)).toBe(false);
+      });
+    }
+  });
+
+  describe("returns false for empty segment", () => {
+    it("empty array", () => {
+      expect(isSafeFilter([])).toBe(false);
     });
   });
 });
