@@ -3,6 +3,7 @@ import denyWritesOutsideProject from "./deny-writes-outside-project";
 import denyGitDashC from "./deny-git-dash-c";
 import denyBashGrep from "./deny-bash-grep";
 import denyCdChained from "./deny-cd-chained";
+import denyGitChained from "./deny-git-chained";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -35,6 +36,7 @@ export const builtinPolicies = [
   denyGitDashC,
   denyBashGrep,
   denyCdChained,
+  denyGitChained,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
