@@ -2,6 +2,7 @@ import type { ToolCall, VerdictResult } from './types'
 import { ALLOW, DENY, NEXT } from './verdicts'
 import { loadConfigs } from './config'
 import { runPolicy } from './policy'
+import { isSuspended } from './suspend'
 interface HookInput {
   tool_name: string
   tool_input: Record<string, any>
@@ -61,6 +62,12 @@ export function buildHookResponse(verdict: VerdictResult): HookResponse {
 
 export async function run(): Promise<void> {
   try {
+    if (isSuspended()) {
+      const response = buildHookResponse({ verdict: NEXT })
+      process.stdout.write(JSON.stringify(response))
+      process.exit(0)
+    }
+
     const input: HookInput = JSON.parse(await Bun.stdin.text())
     const call = buildToolCall(input)
     const policies = await loadConfigs(call.context.cwd)
