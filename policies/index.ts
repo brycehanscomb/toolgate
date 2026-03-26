@@ -26,6 +26,7 @@ import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
 import allowReadOnlyGitBranch from "./allow-git-branch";
 import allowSafeReadCommands from "./allow-safe-read-commands";
+import allowEditInProject from "./allow-edit-in-project";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -56,4 +57,5 @@ export const builtinPolicies = [
   allowGitWorktree,
   allowReadOnlyGitBranch,
   allowSafeReadCommands,
+  allowEditInProject,
 ];

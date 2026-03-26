@@ -1,0 +1,54 @@
+import { basename } from "path";
+import { allow, next, type Policy } from "../src";
+
+// Files where edits have side effects beyond the file content itself.
+// These fall through to prompt the user instead of auto-allowing.
+const SENSITIVE_PATTERNS: Array<{ match: (rel: string) => boolean; reason: string }> = [
+  // Secrets — may contain API keys, passwords, or certificates
+  { match: (rel) => /^\.env($|\.)/.test(basename(rel)), reason: "environment secrets" },
+  { match: (rel) => /\.(pem|key|p12)$/.test(rel), reason: "cryptographic key material" },
+  { match: (rel) => basename(rel) === "credentials.json", reason: "service credentials" },
+  { match: (rel) => basename(rel).startsWith("secrets."), reason: "secrets file" },
+
+  // Config that executes code — scripts run on install, build, or test
+  { match: (rel) => basename(rel) === "package.json", reason: "scripts section can run arbitrary code" },
+
+  // CI/CD — changes deploy to production or run in privileged environments
+  { match: (rel) => rel.startsWith(".github/workflows/"), reason: "CI/CD pipeline runs with elevated permissions" },
+  { match: (rel) => basename(rel) === ".gitlab-ci.yml", reason: "CI/CD pipeline runs with elevated permissions" },
+
+  // Git hooks — execute automatically on git operations
+  { match: (rel) => rel.startsWith(".git/hooks/"), reason: "executes automatically on git operations" },
+  { match: (rel) => rel.startsWith(".husky/"), reason: "executes automatically on git operations" },
+
+  // Permission/policy config — edits can weaken security boundaries
+  { match: (rel) => rel.startsWith(".claude/settings"), reason: "controls Claude Code permissions" },
+  { match: (rel) => basename(rel) === "toolgate.config.ts", reason: "controls toolgate policy evaluation" },
+];
+
+function isSensitive(filePath: string, projectRoot: string): boolean {
+  const rel = filePath.slice(projectRoot.length + 1);
+  return SENSITIVE_PATTERNS.some(({ match }) => match(rel));
+}
+
+const allowEditInProject: Policy = {
+  name: "Allow edits in project",
+  description: "Auto-allows Edit and Write tool calls targeting files inside the project root, except sensitive files",
+  handler: async (call) => {
+    if (call.tool !== "Edit" && call.tool !== "Write") return next();
+
+    const filePath = call.args.file_path;
+    if (typeof filePath !== "string") return next();
+
+    const projectRoot = call.context.projectRoot;
+    if (!projectRoot) return next();
+
+    if (filePath === projectRoot || filePath.startsWith(projectRoot + "/")) {
+      if (isSensitive(filePath, projectRoot)) return next();
+      return allow();
+    }
+
+    return next();
+  },
+};
+export default allowEditInProject;
