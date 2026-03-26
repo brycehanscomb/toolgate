@@ -1,5 +1,12 @@
 import { basename } from "path";
+import { homedir } from "os";
 import { allow, next, type Policy } from "../src";
+
+function resolveHome(p: string): string {
+  if (p === "~") return homedir();
+  if (p.startsWith("~/")) return homedir() + p.slice(1);
+  return p;
+}
 
 // Files where edits have side effects beyond the file content itself.
 // These fall through to prompt the user instead of auto-allowing.
@@ -33,9 +40,9 @@ function isSensitive(filePath: string, projectRoot: string): boolean {
 
 const allowEditInProject: Policy = {
   name: "Allow edits in project",
-  description: "Auto-allows Edit and Write tool calls targeting files inside the project root, except sensitive files",
+  description: "Auto-allows Edit, Write, and Update tool calls targeting files inside the project root, except sensitive files",
   handler: async (call) => {
-    if (call.tool !== "Edit" && call.tool !== "Write") return next();
+    if (call.tool !== "Edit" && call.tool !== "Write" && call.tool !== "Update") return next();
 
     const filePath = call.args.file_path;
     if (typeof filePath !== "string") return next();
@@ -43,8 +50,9 @@ const allowEditInProject: Policy = {
     const projectRoot = call.context.projectRoot;
     if (!projectRoot) return next();
 
-    if (filePath === projectRoot || filePath.startsWith(projectRoot + "/")) {
-      if (isSensitive(filePath, projectRoot)) return next();
+    const resolved = resolveHome(filePath);
+    if (resolved === projectRoot || resolved.startsWith(projectRoot + "/")) {
+      if (isSensitive(resolved, projectRoot)) return next();
       return allow();
     }
 
