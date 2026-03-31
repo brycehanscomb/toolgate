@@ -121,6 +121,7 @@ export function wordToString(word: Word): string | null {
     if (p.Type === "SglQuoted") return (p as SglQuoted).Value;
     if (p.Type === "DblQuoted") {
       const dbl = p as DblQuoted;
+      if (!dbl.Parts || dbl.Parts.length === 0) return "";
       if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
         return (dbl.Parts[0] as Lit).Value;
       }
@@ -138,7 +139,9 @@ export function wordToString(word: Word): string | null {
       values.push((p as SglQuoted).Value);
     } else if (p.Type === "DblQuoted") {
       const dbl = p as DblQuoted;
-      if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
+      if (!dbl.Parts || dbl.Parts.length === 0) {
+        values.push("");
+      } else if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
         values.push((dbl.Parts[0] as Lit).Value);
       } else {
         return null;
