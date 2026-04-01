@@ -38,6 +38,9 @@ import allowMcpIdeDiagnostics from "./allow-mcp-ide-diagnostics";
 import allowPlanMode from "./allow-plan-mode";
 import allowMkdirInProject from "./allow-mkdir-in-project";
 import allowAskUser from "./allow-ask-user";
+import allowToolSearch from "./allow-tool-search";
+import allowGitLocalRepo from "./allow-git-local-repo";
+import allowCronCrud from "./allow-cron-crud";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -69,6 +72,7 @@ export const builtinPolicies = [
   allowGitWorktree,
   allowReadOnlyGitBranch,
   allowGitCheckoutB,
+  allowGitLocalRepo,
   allowSafeReadCommands,
   allowPureAndChains,
   allowReadPluginCache,
@@ -80,4 +84,6 @@ export const builtinPolicies = [
   allowMkdirInProject,
   allowPlanMode,
   allowAskUser,
+  allowToolSearch,
+  allowCronCrud,
 ];

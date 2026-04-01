@@ -20,13 +20,14 @@ interface HookResponse {
 }
 
 export function buildToolCall(input: HookInput): ToolCall {
+  const projectRoot = process.env.CLAUDE_PROJECT_DIR || input.cwd
   return {
     tool: input.tool_name,
     args: input.tool_input,
     context: {
       cwd: input.cwd,
       env: Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
-      projectRoot: input.cwd,
+      projectRoot,
     },
   }
 }
