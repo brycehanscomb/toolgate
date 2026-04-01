@@ -4,6 +4,7 @@ import denyGitDashC from "./deny-git-dash-c";
 import denyBashGrep from "./deny-bash-grep";
 import denyCdChained from "./deny-cd-chained";
 import denyGitChained from "./deny-git-chained";
+import denyGhHeredoc from "./deny-gh-heredoc";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -41,6 +42,7 @@ import allowAskUser from "./allow-ask-user";
 import allowToolSearch from "./allow-tool-search";
 import allowGitLocalRepo from "./allow-git-local-repo";
 import allowCronCrud from "./allow-cron-crud";
+import allowRmProjectTmp from "./allow-rm-project-tmp";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -50,6 +52,7 @@ export const builtinPolicies = [
   denyBashGrep,
   denyCdChained,
   denyGitChained,
+  denyGhHeredoc,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
@@ -86,4 +89,5 @@ export const builtinPolicies = [
   allowAskUser,
   allowToolSearch,
   allowCronCrud,
+  allowRmProjectTmp,
 ];
