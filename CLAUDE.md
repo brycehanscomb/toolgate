@@ -99,6 +99,10 @@ New policies must be inserted at the correct position. First non-`next()` verdic
 | Command can be safely parsed with `safeBashCommand` | Command is hard to scope safely (e.g., `xargs`) |
 | You want deny semantics with a message | Simple allow is sufficient |
 
+## Gotchas
+
+**Never remove an import before replacing its usages in a toolgate config.** If the config file has a syntax/reference error, toolgate evaluation itself fails — which blocks *all* subsequent tool calls (including the ones needed to finish the fix). Always replace usages first, then clean up the import, or do both in a single edit.
+
 ## Auditing Permissions
 
 Use `toolgate audit` to analyze a project's `settings.local.json` against loaded policies:

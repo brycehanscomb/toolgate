@@ -27,6 +27,7 @@ const PURE_COMMANDS: Map<string, Set<string> | null> = new Map([
   ["test", null], // evaluates conditions, no side effects
   ["true", null], // always succeeds, no side effects
   ["false", null], // always fails, no side effects
+  ["pwd", null], // prints cwd, no side effects
 ]);
 
 function isPureCommand(tokens: string[]): boolean {
