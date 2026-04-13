@@ -421,6 +421,16 @@ parseShell()                ← raw AST, you handle all safety checks yourself
 
 Start with `safeBashCommand()`. Only move to `safeBashCommandOrPipeline()` if the command legitimately needs piping. Only use `parseShell()` when you need to inspect the AST structure beyond what the helpers provide (e.g., scanning across chained commands, checking redirect targets).
 
+### Why you can't just split chains and validate each segment
+
+It's tempting to think: "if `git status` is safe and `ls` is safe, then `git status && ls` should be safe too — just split on `&&` and check each part." This is **wrong** because earlier commands can change the execution context for later ones:
+
+- **`cd /etc && cat passwd`** — `cd` changes the working directory, so `cat passwd` resolves to `/etc/passwd`. Each command individually looks harmless (a cd inside project, a cat of a relative path), but together they read outside the project.
+- **`export PATH=/evil:$PATH && git status`** — an assignment changes the environment for subsequent commands.
+- **`alias rm='cp -r' && rm secret /tmp/exfil`** — redefines a command for the rest of the chain.
+
+This is why `safeBashCommand()` rejects all chaining, and why `allow-pure-and-chains` only allows `&&` chains where every segment is provably side-effect-free (no filesystem writes, no env/cwd mutation, no network). Commands like `cd`, `export`, `alias`, `source`, and anything that writes files are excluded from that allowlist by design. Pure functions compose safely; impure ones do not.
+
 
 ## 5. Writing Tests
 
