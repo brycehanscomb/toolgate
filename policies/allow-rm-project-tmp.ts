@@ -17,9 +17,14 @@ const allowRmProjectTmp: Policy = {
     if (!call.context.projectRoot) return next();
 
     const tmpDir = resolve(call.context.projectRoot, "tmp");
+    const flags = args.slice(1).filter((t) => t.startsWith("-"));
     const paths = args.slice(1).filter((t) => !t.startsWith("-"));
 
     if (paths.length === 0) return next();
+
+    // Require approval for -r or -f flags
+    const hasUnsafeFlag = flags.some((f) => /[rf]/.test(f));
+    if (hasUnsafeFlag) return next();
 
     const allInTmp = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);
