@@ -34,11 +34,11 @@ export default definePolicy([
 Toolgate requires [shfmt](https://github.com/mvdan/sh) for Bash command parsing. Without it, all Bash commands will prompt for permission.
 
 ```bash
-# With Go
-go install mvdan.cc/sh/v3/cmd/shfmt@latest
-
-# Or with Homebrew
+# With Homebrew
 brew install shfmt
+
+# Or with Go (ensure ~/go/bin is in your PATH)
+go install mvdan.cc/sh/v3/cmd/shfmt@latest
 ```
 
 ### Package
