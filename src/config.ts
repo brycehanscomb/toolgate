@@ -61,10 +61,16 @@ export async function loadConfigFile(path: string): Promise<Policy[]> {
 
 export async function loadConfigs(cwd: string): Promise<Policy[]> {
   const policies: Policy[] = []
+  const disabled = new Set<string>()
 
   for (const configPath of findAllConfigs(cwd)) {
     try {
-      policies.push(...await loadConfigFile(configPath))
+      const mod = await import(configPath)
+      if (Array.isArray(mod.default)) policies.push(...mod.default)
+      else throw new Error(`config at ${configPath} must export a default array of policies`)
+      if (Array.isArray(mod.disable)) {
+        for (const name of mod.disable) disabled.add(name)
+      }
     } catch (err) {
       console.error(`toolgate: failed to load config ${configPath}: ${err instanceof Error ? err.message : String(err)}`)
     }
@@ -72,5 +78,5 @@ export async function loadConfigs(cwd: string): Promise<Policy[]> {
 
   policies.push(...builtinPolicies)
 
-  return policies
+  return policies.filter(p => !disabled.has(p.name))
 }

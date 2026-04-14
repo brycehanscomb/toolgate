@@ -5,6 +5,7 @@ const TASK_TOOLS = new Set([
   "TaskUpdate",
   "TaskGet",
   "TaskList",
+  "TaskOutput",
   "TaskStop",
   "TaskOutput",
 ]);
@@ -15,7 +16,7 @@ const TASK_TOOLS = new Set([
 const allowTaskCrud: Policy = {
   name: "Allow Task CRUD",
   description:
-    "Permits TaskCreate, TaskUpdate, TaskGet, TaskList, TaskStop, and TaskOutput tool calls",
+    "Permits TaskCreate, TaskUpdate, TaskGet, TaskList, TaskOutput, and TaskStop tool calls",
   handler: async (call) => {
     if (!TASK_TOOLS.has(call.tool)) {
       return next();

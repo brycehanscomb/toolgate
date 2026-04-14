@@ -6,6 +6,7 @@ import denyCdChained from "./deny-cd-chained";
 import denyGitChained from "./deny-git-chained";
 import denyGhHeredoc from "./deny-gh-heredoc";
 import denySshCompound from "./deny-ssh-compound";
+import denyMixedPureChains from "./deny-mixed-pure-chains";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -32,6 +33,7 @@ import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
 import allowReadOnlyGitBranch from "./allow-git-branch";
 import allowGitCheckoutB from "./allow-git-checkout-b";
+import allowGitCommit from "./allow-git-commit";
 import allowSafeReadCommands from "./allow-safe-read-commands";
 import allowPureAndChains from "./allow-pure-and-chains";
 import allowReadPluginCache from "./allow-read-plugin-cache";
@@ -65,6 +67,7 @@ export const builtinPolicies = [
   denyGitChained,
   denyGhHeredoc,
   denySshCompound,
+  denyMixedPureChains,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
@@ -91,6 +94,7 @@ export const builtinPolicies = [
   allowGitWorktree,
   allowReadOnlyGitBranch,
   allowGitCheckoutB,
+  allowGitCommit,
   allowGitStash,
   allowGitLocalRepo,
   allowSafeReadCommands,
