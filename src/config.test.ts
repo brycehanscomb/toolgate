@@ -167,4 +167,49 @@ describe('loadConfigs', () => {
     const policies = await loadConfigs(tempDir)
     expect(policies.length).toBeGreaterThan(0)
   })
+
+  it('disables a builtin policy named in config `disable` export', async () => {
+    await writeFile(
+      join(tempDir, 'toolgate.config.ts'),
+      `export default []\nexport const disable = ['Deny bash grep']`,
+    )
+
+    const policies = await loadConfigs(tempDir)
+    expect(policies.some(p => p.name === 'Deny bash grep')).toBe(false)
+    // other builtins still present
+    expect(policies.some(p => p.name === 'Allow git log/show')).toBe(true)
+  })
+
+  it('disables a policy from an outer config', async () => {
+    // parent defines a project policy; child disables it by name
+    await writeFile(
+      join(tempDir, 'toolgate.config.ts'),
+      `export default [{ name: 'parent-policy', description: '', handler: async () => ({ kind: Symbol.for('next') }) }]`,
+    )
+    const child = join(tempDir, 'child')
+    await mkdir(child)
+    await writeFile(
+      join(child, 'toolgate.config.ts'),
+      `export default []\nexport const disable = ['parent-policy']`,
+    )
+
+    const policies = await loadConfigs(child)
+    expect(policies.some(p => p.name === 'parent-policy')).toBe(false)
+  })
+
+  it('ignores unknown names in `disable` without throwing', async () => {
+    await writeFile(
+      join(tempDir, 'toolgate.config.ts'),
+      `export default []\nexport const disable = ['no-such-policy']`,
+    )
+
+    const policies = await loadConfigs(tempDir)
+    expect(policies.length).toBeGreaterThan(0)
+  })
+
+  it('ignores missing `disable` export', async () => {
+    await writeFile(join(tempDir, 'toolgate.config.ts'), 'export default []')
+    const policies = await loadConfigs(tempDir)
+    expect(policies.length).toBeGreaterThan(0)
+  })
 })

@@ -27,6 +27,10 @@ export default definePolicy([
   //   handler: async (call) => call.tool === 'Read' ? allow() : next(),
   // },
 ])
+
+// Disable built-in or inherited policies by name.
+// Use \`toolgate disable --json\` to see all loaded policies.
+export const disable: string[] = []
 `
 }
 
