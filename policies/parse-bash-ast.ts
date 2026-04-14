@@ -87,11 +87,44 @@ export interface Redirect {
 
 // Core parser
 
-const SHFMT_PATH = `${process.env.HOME}/go/bin/shfmt`;
+function findShfmt(): string | null {
+  const candidates = [
+    `${process.env.HOME}/go/bin/shfmt`,
+    "/usr/local/bin/shfmt",
+    "/opt/homebrew/bin/shfmt",
+  ];
+  for (const p of candidates) {
+    if (Bun.file(p).size) return p;
+  }
+  // Fall back to PATH lookup
+  try {
+    const result = Bun.spawnSync(["which", "shfmt"], { stdout: "pipe", stderr: "pipe" });
+    const path = new TextDecoder().decode(result.stdout).trim();
+    if (result.exitCode === 0 && path) return path;
+  } catch {}
+  return null;
+}
+
+const SHFMT_PATH = findShfmt();
+
+let _shfmtWarned = false;
+function warnMissingShfmt(): void {
+  if (_shfmtWarned) return;
+  _shfmtWarned = true;
+  console.error(
+    "[toolgate] WARNING: shfmt not found. Bash AST parsing is disabled — all Bash commands will prompt for permission.\n" +
+    "  Install: go install mvdan.cc/sh/v3/cmd/shfmt@latest\n" +
+    "  Or:      brew install shfmt",
+  );
+}
 
 export async function parseShell(
   command: string,
 ): Promise<ShellFile | null> {
+  if (!SHFMT_PATH) {
+    warnMissingShfmt();
+    return null;
+  }
   try {
     const proc = Bun.spawn([SHFMT_PATH, "--tojson"], {
       stdin: "pipe",

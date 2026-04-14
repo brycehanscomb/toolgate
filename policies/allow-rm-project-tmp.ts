@@ -16,7 +16,8 @@ const allowRmProjectTmp: Policy = {
     if (!args || args[0] !== "rm") return next();
     if (!call.context.projectRoot) return next();
 
-    const tmpDir = resolve(call.context.projectRoot, "tmp");
+    const tmpDirs = [call.context.projectRoot, ...(call.context.additionalDirs ?? [])]
+      .map((d) => resolve(d, "tmp"));
     const flags = args.slice(1).filter((t) => t.startsWith("-"));
     const paths = args.slice(1).filter((t) => !t.startsWith("-"));
 
@@ -28,7 +29,7 @@ const allowRmProjectTmp: Policy = {
 
     const allInTmp = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);
-      return resolved.startsWith(tmpDir + "/");
+      return tmpDirs.some((tmp) => resolved.startsWith(tmp + "/"));
     });
 
     return allInTmp ? allow() : next();
