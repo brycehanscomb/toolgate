@@ -39,6 +39,20 @@ Each policy is a `Policy` object with `name`, `description`, and `handler`. The 
 
 Built-in policies are exported from `policies/index.ts` and automatically appended after any project-level policies. Project configs (`toolgate.config.ts`) can add extra policies via `definePolicy([...])`. Order matters — first non-NEXT verdict wins.
 
+### Disabling Policies
+
+A config can disable any named policy (builtin or inherited from a parent config) via a named `disable` export:
+
+```ts
+// toolgate.config.ts
+export default [myPolicy]
+export const disable = ['Deny bash grep']
+```
+
+Names must match the `name` field on the target `Policy` exactly. Unknown names are silently ignored.
+
+Use `toolgate disable` to interactively toggle policies on/off, or `toolgate disable --json` to dump the full policy state (names, sources, disable status) for debugging.
+
 ### Adding/Renaming Policies
 
 When creating a new policy or renaming an existing one, you **must** update `policies/index.ts` to import and include it in the `builtinPolicies` array. A policy file that isn't registered in the index will have no effect.
@@ -114,3 +128,16 @@ toolgate audit --json   # machine-readable
 ```
 
 This identifies redundant rules (already covered by policies), needed rules (candidates for new policies), and denied rules (conflicts with deny policies).
+
+## Managing Disabled Policies
+
+Use `toolgate disable` to interactively toggle which policies are disabled in a config:
+
+```bash
+toolgate disable           # interactive TUI, edits nearest config
+toolgate disable --local   # target toolgate.config.local.ts
+toolgate disable --shared  # target toolgate.config.ts
+toolgate disable --json    # dump all policies + disable state as JSON
+```
+
+The `--json` output includes each policy's name, description, source, disabled status, and which config disables it — useful for LLM-assisted debugging of policy behavior.
