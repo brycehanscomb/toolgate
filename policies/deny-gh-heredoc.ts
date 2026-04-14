@@ -1,30 +1,44 @@
 import { deny, next, type Policy } from "../src";
-import { parseShell, hasUnsafeNodes } from "./parse-bash-ast";
+import { parseShell, hasUnsafeNodes, Op } from "./parse-bash-ast";
+import type { ShellFile } from "./parse-bash-ast";
 
 /**
- * Deny gh/git commands that use command substitution (typically heredocs for
- * multi-line bodies or commit messages). Instructs Claude to write content to
- * a tmp/ file in the project first, then use --body-file / --input / -F,
- * which is safer (no shell escaping issues) and reviewable via the Write tool.
+ * Deny gh/git commands that use command substitution or heredoc redirects
+ * (typically for multi-line bodies or commit messages). Instructs Claude to
+ * write content to a tmp/ file in the project first, then use
+ * --body-file / --input / -F, which is safer (no shell escaping issues)
+ * and reviewable via the Write tool.
  */
+
+function hasHeredocRedirects(ast: ShellFile): boolean {
+  for (const stmt of ast.Stmts) {
+    if (stmt.Redirs) {
+      for (const r of stmt.Redirs) {
+        if (r.Op === Op.Hdoc || r.Op === Op.DashHdoc) return true;
+      }
+    }
+  }
+  return false;
+}
+
 const denyGhHeredoc: Policy = {
   name: "Deny gh/git heredoc/command substitution",
   description:
-    "Rejects gh/git commands containing $(…) — use Write tool + --body-file, --input, or -F instead",
+    "Rejects gh/git commands containing $(…) or heredoc redirects — use Write tool + --body-file, --input, or -F instead",
   handler: async (call) => {
     if (call.tool !== "Bash") return next();
     const command = call.args.command;
     if (typeof command !== "string") return next();
 
-    // Quick check: must involve gh or git, and command substitution syntax
+    // Quick check: must involve gh or git
     if (!command.includes("gh ") && !command.includes("git ")) return next();
-    if (!command.includes("$(") && !command.includes("`")) return next();
 
     const ast = await parseShell(command);
     if (!ast) return next();
 
-    // Only deny if the AST actually contains unsafe nodes (CmdSubst, ParamExp, etc.)
-    if (!hasUnsafeNodes(ast)) return next();
+    // Deny if the AST contains unsafe nodes (CmdSubst, ParamExp, etc.)
+    // or heredoc redirects (<< / <<-)
+    if (!hasUnsafeNodes(ast) && !hasHeredocRedirects(ast)) return next();
 
     if (command.includes("git ")) {
       return deny(

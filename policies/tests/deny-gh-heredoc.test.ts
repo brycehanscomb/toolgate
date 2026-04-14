@@ -47,6 +47,36 @@ describe("deny-gh-heredoc", () => {
     }
   });
 
+  describe("denies gh commands with heredoc redirects", () => {
+    const denied = [
+      `gh issue create --title "test" --body-file /dev/stdin << 'ISSUE_EOF'\nsome body\nISSUE_EOF`,
+      `gh pr comment 123 --body-file /dev/stdin << 'EOF'\ncomment text\nEOF`,
+      `gh pr create --title "test" --body-file /dev/stdin <<- 'EOF'\n\tbody text\n\tEOF`,
+    ];
+
+    for (const cmd of denied) {
+      it(`denies: ${cmd.slice(0, 60)}...`, async () => {
+        const result = await denyGhHeredoc.handler(bash(cmd));
+        expect(result.verdict).toBe(DENY);
+        expect(result.reason).toContain("--body-file");
+      });
+    }
+  });
+
+  describe("denies git commands with heredoc redirects", () => {
+    const denied = [
+      `git commit -F /dev/stdin << 'EOF'\nfix: some message\n\nCo-Authored-By: Claude\nEOF`,
+    ];
+
+    for (const cmd of denied) {
+      it(`denies: ${cmd.slice(0, 60)}...`, async () => {
+        const result = await denyGhHeredoc.handler(bash(cmd));
+        expect(result.verdict).toBe(DENY);
+        expect(result.reason).toContain("git commit -F");
+      });
+    }
+  });
+
   describe("allows safe gh commands through", () => {
     const allowed = [
       "gh pr view 123",

@@ -11,6 +11,8 @@ export const Op = {
   RdrIn: 65,
   DplOut: 68,
   RdrAll: 74,
+  Hdoc: 71,
+  DashHdoc: 72,
 } as const;
 
 // AST Types
