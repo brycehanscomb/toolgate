@@ -31,6 +31,7 @@ import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
 import allowReadOnlyGitBranch from "./allow-git-branch";
 import allowGitCheckoutB from "./allow-git-checkout-b";
+import allowGitCommit from "./allow-git-commit";
 import allowSafeReadCommands from "./allow-safe-read-commands";
 import allowPureAndChains from "./allow-pure-and-chains";
 import allowReadPluginCache from "./allow-read-plugin-cache";
@@ -83,6 +84,7 @@ export const builtinPolicies = [
   allowGitWorktree,
   allowReadOnlyGitBranch,
   allowGitCheckoutB,
+  allowGitCommit,
   allowGitStash,
   allowGitLocalRepo,
   allowSafeReadCommands,
