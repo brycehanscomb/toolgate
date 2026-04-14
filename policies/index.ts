@@ -53,8 +53,6 @@ import allowNpmInstall from "./allow-npm-install";
 import allowNpxSafe from "./allow-npx-safe";
 import allowSleep from "./allow-sleep";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
-import allowFileOpsInSites from "./allow-file-ops-in-sites";
-import allowFileOpsInKoWork from "./allow-file-ops-in-ko-work";
 import allowGhIssuePr from "./allow-gh-issue-pr";
 import allowTmux from "./allow-tmux";
 
@@ -115,7 +113,5 @@ export const builtinPolicies = [
   allowNpxSafe,
   allowSleep,
   allowNonDestructiveGit,
-  allowFileOpsInSites,
-  allowFileOpsInKoWork,
   allowTmux,
 ];
