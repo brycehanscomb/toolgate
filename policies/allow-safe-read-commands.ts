@@ -18,6 +18,7 @@ const SAFE_READ_COMMANDS = new Set([
   "stat",
   "du",
   "diff",
+  "jq",
   "sed",
 ]);
 
@@ -49,6 +50,38 @@ function getSedFilePaths(tokens: string[]): string[] {
     } else if (!scriptSeen) {
       // First non-flag, non -e/-f argument is the inline script
       scriptSeen = true;
+      i++;
+    } else {
+      paths.push(t);
+      i++;
+    }
+  }
+  return paths;
+}
+
+/**
+ * Extract file paths from jq arguments, skipping flags and the filter expression.
+ * jq usage: jq [flags] <filter> [file...]
+ * The first non-flag positional arg is the filter expression; the rest are file paths.
+ */
+function getJqFilePaths(tokens: string[]): string[] {
+  const paths: string[] = [];
+  let filterSeen = false;
+  // Flags that consume the next argument
+  const flagsWithArg = new Set([
+    "--arg", "--argjson", "--slurpfile", "--rawfile",
+    "--jsonargs", "--args", "-f", "--from-file",
+    "--indent", "--tab",
+  ]);
+  let i = 1;
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (flagsWithArg.has(t)) {
+      i += 2; // skip flag and its value
+    } else if (t.startsWith("-")) {
+      i++;
+    } else if (!filterSeen) {
+      filterSeen = true;
       i++;
     } else {
       paths.push(t);
@@ -96,6 +129,8 @@ const allowSafeReadCommands: Policy = {
 
     const paths = tokens[0] === "sed"
       ? getSedFilePaths(tokens)
+      : tokens[0] === "jq"
+      ? getJqFilePaths(tokens)
       : tokens.slice(1).filter((t) => !t.startsWith("-"));
 
     // No file args — allowed only if cwd is in project

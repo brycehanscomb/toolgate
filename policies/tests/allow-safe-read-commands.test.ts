@@ -102,6 +102,45 @@ describe("allow-safe-read-commands", () => {
     }
   });
 
+  describe("allows jq within project", () => {
+    const allowed = [
+      `jq '.content.faqs[]' ${PROJECT}/data.json`,
+      `jq '.foo | select(.bar)' ${PROJECT}/config.json`,
+      `jq -r '.name' ${PROJECT}/package.json`,
+      `jq --raw-output '.items[]' ${PROJECT}/data.json`,
+      `jq -S '.' ${PROJECT}/data.json`,
+      `jq --arg name foo '.[$name]' ${PROJECT}/data.json`,
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await allowSafeReadCommands.handler(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("rejects jq with files outside project", () => {
+    const rejected = [
+      "jq '.' /etc/secrets.json",
+      "jq '.keys' /home/user/other/data.json",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowSafeReadCommands.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("allows jq with no file args (reads stdin) when cwd is in project", () => {
+    it("allows jq with filter only", async () => {
+      const result = await allowSafeReadCommands.handler(bash("jq '.'"));
+      expect(result.verdict).toBe(ALLOW);
+    });
+  });
+
   describe("rejects bare commands when cwd is outside project", () => {
     it("rejects cat with no args in /tmp", async () => {
       const result = await allowSafeReadCommands.handler(bash("cat", "/tmp"));

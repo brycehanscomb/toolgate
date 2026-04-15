@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowAwsCli, { createAwsCliPolicy } from "../allow-aws-cli";
 
 const PROJECT = "/home/user/project";
