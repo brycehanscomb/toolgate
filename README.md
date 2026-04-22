@@ -57,7 +57,7 @@ toolgate init
 toolgate init --project
 ```
 
-This registers a `PreToolUse` hook in `~/.claude/settings.json`. Toolgate ships with [50 built-in policies](#built-in-policies) that are always active.
+This registers a `PreToolUse` hook in `~/.claude/settings.json`. Toolgate ships with [62 built-in policies](#built-in-policies) that are always active.
 
 ## Configuration
 
@@ -90,6 +90,18 @@ export default definePolicy([
 ```
 
 Project policies run first (personal before shared), then built-in. The first non-`next()` verdict wins.
+
+### Disabling Policies
+
+A config can disable any named policy (built-in or inherited from a parent config) via a named `disable` export:
+
+```ts
+// toolgate.config.ts
+export default [myPolicy]
+export const disable = ['Deny bash grep']
+```
+
+Names must match the `name` field on the target `Policy` exactly. Use `toolgate disable` to interactively toggle policies on/off, or `toolgate disable --json` to dump the full policy state for debugging.
 
 ## Writing Policies
 
@@ -166,6 +178,10 @@ if (!tokens) return next();
 if (tokens[0] === "git") return allow();
 ```
 
+#### `getAndChainSegments(file)`
+
+Decomposes `&&`-chained commands into individual `Stmt` nodes. Returns `null` if the command contains `||`, `;`, or other unsafe operators. Use this when you need to validate each segment of a compound command independently (e.g. `allow-pure-and-chains`).
+
 #### `isSafeFilter(tokens)`
 
 Returns `true` if a token array is a safe pipe filter — a command that only reads stdin and writes stdout. Safe filters: `grep`, `egrep`, `fgrep`, `head`, `tail`, `wc`, `cat`, `tr`, `cut`, `sort` (without `-o`), `uniq`.
@@ -196,13 +212,19 @@ toolgate list
 toolgate audit
 toolgate audit --json
 
+# Interactively toggle which policies are disabled
+toolgate disable
+toolgate disable --local   # target toolgate.config.local.ts
+toolgate disable --shared  # target toolgate.config.ts
+toolgate disable --json    # dump all policies + disable state as JSON
+
 # Temporarily suspend all policies (Ctrl+C to resume)
 toolgate suspend
 ```
 
 ## Built-in Policies
 
-Toolgate ships with 50 built-in policies organized in three tiers. Order matters — first non-`next()` verdict wins.
+Toolgate ships with 62 built-in policies organized in three tiers. Order matters — first non-`next()` verdict wins.
 
 ### Deny (block dangerous patterns first)
 
@@ -211,16 +233,18 @@ Toolgate ships with 50 built-in policies organized in three tiers. Order matters
 | `deny-git-add-and-commit` | Blocks compound git add+commit, forcing separate steps |
 | `deny-writes-outside-project` | Blocks writes, redirects, cp/mv/install targeting paths outside the project |
 | `deny-git-dash-c` | Blocks `git -C` configuration injection |
-| `deny-bash-grep` | Rejects grep/rg in Bash — use the built-in Grep tool instead |
 | `deny-cd-chained` | Blocks cd chained with other commands |
 | `deny-git-chained` | Blocks git commands chained with non-git commands |
 | `deny-gh-heredoc` | Prevents heredoc/command substitution in gh/git commands |
+| `deny-ssh-compound` | Rejects compound Bash commands containing ssh — run ssh separately for explicit approval |
+| `deny-mixed-pure-chains` | Blocks compound commands mixing pure (sleep, echo) and non-pure commands |
 
 ### Redirect
 
 | Policy | Description |
 |--------|-------------|
 | `redirect-plans-to-project` | Blocks plan writes to `~/.claude/plans/` and suggests project `docs/` instead |
+| `redirect-python-json-to-fx` | Blocks python3 JSON processing commands — suggests `fx`/`gron` instead |
 
 ### Allow (whitelist safe patterns)
 
@@ -234,12 +258,15 @@ Toolgate ships with 50 built-in policies organized in three tiers. Order matters
 | `allow-git-status` | Permits `git status`, optionally piped |
 | `allow-git-branch` | Permits read-only `git branch` commands |
 | `allow-git-checkout-b` | Permits `git checkout -b` / `git switch -c` |
+| `allow-git-commit` | Permits standalone `git commit` (chained add+commit is caught by deny policy) |
 | `allow-git-stash` | Permits safe `git stash` operations |
 | `allow-git-worktree` | Permits `git worktree` add/list/move/remove/prune |
 | `allow-git-check-ignore` | Permits `git check-ignore` |
 | `allow-git-rev-parse` | Permits `git rev-parse` |
 | `allow-git-local-repo` | Permits git commands in local repos |
+| `allow-non-destructive-git` | Auto-approves git commands that don't mutate remote state or discard uncommitted work |
 | `allow-gh-read-only` | Permits read-only `gh` CLI commands (view, list, diff, checks, search) |
+| `allow-gh-issue-pr` | Permits `gh issue` and `gh pr` subcommands (create, edit, comment, close, reopen) but denies delete |
 
 **File Operations**
 
@@ -248,9 +275,11 @@ Toolgate ships with 50 built-in policies organized in three tiers. Order matters
 | `allow-read-in-project` | Permits `Read` tool for files within project root |
 | `allow-edit-in-project` | Permits `Edit`, `Write`, `Update` for files in project (except sensitive files) |
 | `allow-grep-in-project` | Permits `Grep` tool within project root |
+| `allow-bash-grep-in-project` | Permits grep/egrep/fgrep/rg commands when all paths are within project root |
 | `allow-search-in-project` | Permits `Search` and `Glob` within project root |
 | `allow-find-in-project` | Permits `Find` tool within project root |
 | `allow-mkdir-in-project` | Permits `mkdir` within project root |
+| `allow-read-tool-results` | Permits Read tool calls targeting `~/.claude/projects/*/tool-results/` |
 
 **Bash & Shell**
 
@@ -265,6 +294,11 @@ Toolgate ships with 50 built-in policies organized in three tiers. Order matters
 | `allow-rm-project-tmp` | Permits `rm` in project tmp/ directories |
 | `allow-sleep` | Permits `sleep` with numeric duration |
 | `allow-read-plugin-cache` | Permits reads from plugin cache directories |
+| `allow-npm-install` | Permits npm install, pnpm install, and yarn install commands |
+| `allow-npx-safe` | Permits npx commands for whitelisted packages (playwright, vitest, etc.) |
+| `allow-tmux` | Auto-allows read-only tmux commands; for send-keys, evaluates inner command through the policy chain |
+| `allow-aws-cli` | Auto-allows non-destructive AWS CLI commands with ReadOnly profiles; requires approval for Admin profiles |
+| `allow-brew` | Auto-allows read-only brew commands (list, info, search, etc.); requires approval for mutating commands |
 
 **Claude Code Tools**
 
@@ -274,7 +308,6 @@ Toolgate ships with 50 built-in policies organized in three tiers. Order matters
 | `allow-plan-in-project` | Permits Plan tool within project root |
 | `allow-agent` | Permits Agent subagent invocations |
 | `allow-task-crud` | Permits Task tool calls (create, update, list, get) |
-| `allow-task-create` | Permits TaskCreate tool calls |
 | `allow-cron-crud` | Permits CronCreate, CronDelete, CronList |
 | `allow-ask-user` | Permits AskUserQuestion |
 | `allow-plan-mode` | Permits EnterPlanMode and ExitPlanMode |
@@ -290,6 +323,7 @@ Toolgate ships with 50 built-in policies organized in three tiers. Order matters
 | `allow-webfetch-claude` | Permits WebFetch to claude.com and subdomains |
 | `allow-mcp-context7` | Permits Context7 documentation lookup calls |
 | `allow-mcp-ide-diagnostics` | Permits IDE diagnostics tool calls |
+| `allow-mcp-playwright` | Permits all Playwright browser automation tool calls |
 
 ## License
 
