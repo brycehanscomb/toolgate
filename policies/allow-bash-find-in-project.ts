@@ -1,27 +1,28 @@
 import { resolve } from "node:path";
-import { allow, next, isWithinProject, type Policy } from "../src";
+import { isWithinProject, type Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
 const allowBashFindInProject: Policy = {
   name: "Allow bash find in project",
   description: "Permits find commands when all paths are within the project root",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
-    if (typeof call.args.command !== "string") return next();
-    if (!call.context.projectRoot) return next();
+    if (call.tool !== "Bash") return;
+    if (typeof call.args.command !== "string") return;
+    if (!call.context.projectRoot) return;
 
     const ast = await parseShell(call.args.command);
-    if (!ast || ast.Stmts.length !== 1) return next();
+    if (!ast || ast.Stmts.length !== 1) return;
 
     const cmds = getPipelineCommands(ast.Stmts[0]);
-    if (!cmds) return next();
+    if (!cmds) return;
 
     const tokens = getArgs(cmds[0]);
-    if (!tokens || tokens[0] !== "find") return next();
+    if (!tokens || tokens[0] !== "find") return;
 
     for (let i = 1; i < cmds.length; i++) {
       const args = getArgs(cmds[i]);
-      if (!args || !isSafeFilter(args)) return next();
+      if (!args || !isSafeFilter(args)) return;
     }
 
     const SAFE_FLAGS = new Set([
@@ -37,8 +38,8 @@ const allowBashFindInProject: Policy = {
     ]);
 
     for (const t of tokens.slice(1)) {
-      if (t.startsWith("-") && !SAFE_FLAGS.has(t)) return next();
-      if (t === "(" || t === ")" || t === "\\(" || t === "\\)") return next();
+      if (t.startsWith("-") && !SAFE_FLAGS.has(t)) return;
+      if (t === "(" || t === ")" || t === "\\(" || t === "\\)") return;
     }
 
     const root = call.context.projectRoot;
@@ -50,7 +51,7 @@ const allowBashFindInProject: Policy = {
     }
 
     if (paths.length === 0) {
-      return isWithinProject(call.context.cwd, call.context) ? allow() : next();
+      return isWithinProject(call.context.cwd, call.context) ? true : undefined;
     }
 
     const allInProject = paths.every((p) => {
@@ -58,7 +59,7 @@ const allowBashFindInProject: Policy = {
       return isWithinProject(resolved, call.context);
     });
 
-    return allInProject ? allow() : next();
+    return allInProject ? true : undefined;
   },
 };
 export default allowBashFindInProject;
