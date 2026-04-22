@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, isWithinProject, type Policy } from "../src";
+import { isWithinProject, type Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
 /**
@@ -99,32 +99,33 @@ function isInProject(path: string, cwd: string, context: { projectRoot: string; 
 const allowSafeReadCommands: Policy = {
   name: "Allow safe read commands in project",
   description: "Permits read-only commands (cat, head, tail, wc, etc.) when all file paths are within the project root",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
-    if (typeof call.args.command !== "string") return next();
-    if (!call.context.projectRoot) return next();
+    if (call.tool !== "Bash") return;
+    if (typeof call.args.command !== "string") return;
+    if (!call.context.projectRoot) return;
 
     const ast = await parseShell(call.args.command);
-    if (!ast || ast.Stmts.length !== 1) return next();
+    if (!ast || ast.Stmts.length !== 1) return;
 
     const cmds = getPipelineCommands(ast.Stmts[0]);
-    if (!cmds || cmds.length === 0) return next();
+    if (!cmds || cmds.length === 0) return;
 
     const tokens = getArgs(cmds[0]);
-    if (!tokens || !SAFE_READ_COMMANDS.has(tokens[0])) return next();
+    if (!tokens || !SAFE_READ_COMMANDS.has(tokens[0])) return;
 
     // sed: reject in-place editing
     if (tokens[0] === "sed") {
       for (const t of tokens) {
         if (t === "-i" || t.startsWith("-i") || t === "--in-place" || t.startsWith("--in-place="))
-          return next();
+          return;
       }
     }
 
     // All subsequent pipeline segments must be safe filters
     for (let i = 1; i < cmds.length; i++) {
       const segArgs = getArgs(cmds[i]);
-      if (!segArgs || !isSafeFilter(segArgs)) return next();
+      if (!segArgs || !isSafeFilter(segArgs)) return;
     }
 
     const paths = tokens[0] === "sed"
@@ -136,12 +137,12 @@ const allowSafeReadCommands: Policy = {
     // No file args — allowed only if cwd is in project
     if (paths.length === 0) {
       return isInProject(call.context.cwd, call.context.cwd, call.context)
-        ? allow()
-        : next();
+        ? true
+        : undefined;
     }
 
     const allInProject = paths.every((p) => isInProject(p, call.context.cwd, call.context));
-    return allInProject ? allow() : next();
+    return allInProject ? true : undefined;
   },
 };
 export default allowSafeReadCommands;

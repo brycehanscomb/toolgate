@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowBashFindInProject from "../allow-bash-find-in-project";
+
+const run = adaptHandler(allowBashFindInProject.action!, allowBashFindInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -32,7 +34,7 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -48,7 +50,7 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -56,12 +58,12 @@ describe("allow-bash-find-in-project", () => {
 
   describe("rejects bare find when cwd is outside project", () => {
     it("rejects find in /tmp", async () => {
-      const result = await allowBashFindInProject.handler(bash("find", "/tmp"));
+      const result = await run(bash("find", "/tmp"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects find . in /tmp", async () => {
-      const result = await allowBashFindInProject.handler(bash("find .", "/tmp"));
+      const result = await run(bash("find .", "/tmp"));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -75,7 +77,7 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -95,7 +97,7 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -112,7 +114,7 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -134,7 +136,7 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -147,19 +149,19 @@ describe("allow-bash-find-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBashFindInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
   it("passes through when no project root", async () => {
-    const result = await allowBashFindInProject.handler(bash("find .", PROJECT, null));
+    const result = await run(bash("find .", PROJECT, null));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-find commands", async () => {
-    const result = await allowBashFindInProject.handler(bash("ls -la"));
+    const result = await run(bash("ls -la"));
     expect(result.verdict).toBe(NEXT);
   });
 });

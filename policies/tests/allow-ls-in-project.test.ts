@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowLsInProject from "../allow-ls-in-project";
+
+const run = adaptHandler(allowLsInProject.action!, allowLsInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -29,7 +31,7 @@ describe("allow-ls-in-project", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowLsInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -45,7 +47,7 @@ describe("allow-ls-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowLsInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -53,12 +55,12 @@ describe("allow-ls-in-project", () => {
 
   describe("rejects bare ls when cwd is outside project", () => {
     it("rejects ls in /tmp", async () => {
-      const result = await allowLsInProject.handler(bash("ls", "/tmp"));
+      const result = await run(bash("ls", "/tmp"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects ls -la in /tmp", async () => {
-      const result = await allowLsInProject.handler(bash("ls -la", "/tmp"));
+      const result = await run(bash("ls -la", "/tmp"));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -72,7 +74,7 @@ describe("allow-ls-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowLsInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -90,7 +92,7 @@ describe("allow-ls-in-project", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowLsInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -106,19 +108,19 @@ describe("allow-ls-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowLsInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
   it("passes through when no project root", async () => {
-    const result = await allowLsInProject.handler(bash("ls", PROJECT, null));
+    const result = await run(bash("ls", PROJECT, null));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-ls commands", async () => {
-    const result = await allowLsInProject.handler(bash("cat /etc/passwd"));
+    const result = await run(bash("cat /etc/passwd"));
     expect(result.verdict).toBe(NEXT);
   });
 });
