@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowPnpmPackageScript from "../allow-pnpm-package-script";
 
 let fixtureRoot: string;
