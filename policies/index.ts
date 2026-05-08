@@ -64,6 +64,7 @@ import allowBrew from "./allow-brew";
 import allowMcpAtlassian from "./allow-mcp-atlassian";
 import allowGo from "./allow-go";
 import allowLsof from "./allow-lsof";
+import allowCdk from "./allow-cdk";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -132,4 +133,5 @@ export const builtinPolicies = [
   allowMcpAtlassian,
   allowGo,
   allowLsof,
+  allowCdk,
 ];
